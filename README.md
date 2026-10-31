@@ -9,18 +9,18 @@ payslip and envelope excess.
 
 From this directory, serve files with any static HTTP server, for example:
 
-\`\`\`sh
+```sh
 python3 -m http.server 8080
-\`\`\`
+```
 
-Open http://localhost:8080 in a browser. The included \`run.py\` is an
+Open http://localhost:8080 in a browser. The included `run.py` is an
 Ubuntu-focused desktop launcher.
 
 ## Test
 
-\`\`\`sh
+```sh
 node --test tests.mjs
-\`\`\`
+```
 
 ## Local data and privacy
 
