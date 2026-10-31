@@ -5,6 +5,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
 from urllib.request import urlopen
+import json
 import shutil
 import subprocess
 import sys
@@ -35,8 +36,9 @@ def main():
             partial(QuietHandler, directory=str(PROJECT)))
     except OSError:
         try:
-            with urlopen(URL, timeout=1) as response:
-                if "Shift Planner" not in response.read(2000).decode("utf-8"):
+            with urlopen(URL + "manifest.webmanifest", timeout=2) as response:
+                manifest = json.loads(response.read().decode("utf-8"))
+                if manifest.get("name") not in ("Planning", "Shift Planner"):
                     raise RuntimeError("Local port is used by a different application")
         except Exception as error:
             raise RuntimeError("Port " + str(PORT) + " is not available") from error

@@ -1,5 +1,5 @@
-const CACHE_NAME = "planning-offline-v9-auto-today-highlight";
-const ASSETS = ["./","./index.html","./styles.css","./theme-v13.css","./ios-picker-v14.css","./ios-picker-v14.mjs","./quick-shifts-v15.css","./app.mjs","./translations-extra.mjs","./core.mjs","./archive-db.mjs","./icon.svg","./favicon-v2.png","./apple-touch-icon-v2.png","./icon-192-v2.png","./icon-512-v2.png","./manifest.webmanifest"];
+const CACHE_NAME = "planning-offline-v10-hourly-pay";
+const ASSETS = ["./","./index.html","./styles.css","./theme-v13.css","./ios-picker-v14.css","./ios-picker-v14.mjs","./quick-shifts-v15.css","./app.mjs","./hourly-pay.css","./hourly-translations.mjs","./time-picker.mjs","./translations-extra.mjs","./core.mjs","./archive-db.mjs","./icon.svg","./favicon-v2.png","./apple-touch-icon-v2.png","./icon-192-v2.png","./icon-512-v2.png","./manifest.webmanifest"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });

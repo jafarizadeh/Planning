@@ -148,13 +148,13 @@ test("merging backups never overwrites current shifts or monthly rates",async()=
   assert.equal(audit.length,1);
 });
 
-test("version 2 backup contains preserved pay periods and audit", async()=>{
+test("new backup contains preserved pay periods and audit", async()=>{
   const {sanitizeAudit} = await import("./core.mjs");
   const r={"2026-09-11":{morning:"work"}};
   const policies={"2026-09":{shiftRate:60,payslipCap:777}};
   const audit=sanitizeAudit([{id:"a",at:"2026-09-11T13:15:00.000Z",type:"shift",period:"2026-09",detail:"morning work"}]);
   const backup=makeBackup(r,{language:"fr",shiftRate:40,payslipCap:711},policies,audit);
-  assert.equal(backup.schemaVersion,2);
+  assert.equal(backup.schemaVersion,3);
   const copy=parseBackup(JSON.stringify(backup));
   assert.equal(copy.monthlyPolicies["2026-09"].shiftRate,60);
   assert.equal(copy.audit.length,1);

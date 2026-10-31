@@ -1,0 +1,83 @@
+/* Planning personal: compact pay modes and touch-first time entry. */
+.pay-settings-period{margin:-4px 0 15px;color:var(--muted);font-size:11px;line-height:1.5}
+.pay-mode-field{border:0;padding:0;margin:0 0 17px;min-width:0}
+.pay-mode-field legend{margin-bottom:9px;padding:0}
+.pay-mode-segment{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;background:var(--surface-soft);border:1px solid var(--line);border-radius:14px}
+.pay-mode-option{position:relative;min-width:0;cursor:pointer}
+.pay-mode-option input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.pay-mode-option>span{display:flex;align-items:center;justify-content:center;min-height:42px;padding:8px;color:var(--muted);font-size:12px;font-weight:720;border-radius:10px;transition:background .16s,color .16s,box-shadow .16s}
+.pay-mode-option input:checked+span{background:var(--surface);color:var(--blue);box-shadow:0 1px 5px #1739531a}
+.pay-mode-option input:focus-visible+span{outline:3px solid #84b2d9;outline-offset:1px}
+.hourly-mode-note{font-size:11px;color:var(--muted);margin:0 0 12px;line-height:1.7}
+#hourly-rate-input{padding-inline-end:49px}
+.pay-duration-summary{font-size:11px;font-weight:650;text-align:end;line-height:1.5;color:var(--muted);margin:8px 3px 0}
+.pay-incomplete-notice{border:1px solid #e9cf9e;background:#fff8ea;color:#876021;border-radius:10px;padding:9px 11px;font-size:10.5px;font-weight:650;line-height:1.65;margin:9px 0 0}
+.day.has-time-warning{position:relative}
+.day.has-time-warning::before{content:"";position:absolute;width:13px;height:3px;border-radius:4px;background:#c89546;bottom:3px;left:50%;transform:translateX(-50%);pointer-events:none}
+.shift-time-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.time-range-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.time-value-button{display:flex;align-items:center;justify-content:space-between;gap:7px;min-width:0;min-height:47px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft);color:var(--ink);text-align:start;font:inherit;touch-action:manipulation;transition:background .12s,border-color .12s,transform .12s}
+.time-value-label{font-size:10px;font-weight:650;color:var(--muted)}
+.time-value-button strong{font-size:16px;font-weight:760;font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap;color:var(--blue)}
+.time-value-button:not(.has-value) strong{color:var(--muted)}
+.time-value-button:disabled{opacity:.5;cursor:default}
+.time-value-button:not(:disabled):active{transform:scale(.975);background:#e6eef8}
+.time-value-button:focus-visible,.time-next-day:focus-visible{outline:3px solid #88b5d8;outline-offset:1px}
+.time-next-day{display:flex;align-items:center;gap:6px;min-height:33px;max-width:100%;margin:5px 0 0;padding:3px 2px;color:var(--muted);background:transparent;border:0;font-size:10px;font-weight:650;text-align:start}
+.time-next-day:disabled{opacity:.45;cursor:default}
+.time-next-day-check{width:16px;height:16px;border-radius:5px;display:grid;place-items:center;border:1px solid var(--line);color:transparent;background:var(--surface-soft);font-size:11px;flex:none}
+.time-next-day[aria-pressed="true"] .time-next-day-check{background:#386487;color:#fff;border-color:#386487}
+.time-next-day[aria-pressed="true"]{color:var(--blue)}
+.time-range-status{margin:1px 0 0;font-size:10px;font-weight:600;line-height:1.5;color:var(--muted);min-height:15px}
+.time-range-status.is-warning{color:#997027}
+.time-day-summary{display:flex;align-items:center;justify-content:center;text-align:center;font-size:10.5px;line-height:1.5;color:var(--blue);font-weight:700;padding:8px 6px;margin-top:7px;background:var(--surface-soft);border-radius:10px}
+.quick-sheet.is-hourly .quick-sheet-top{margin-bottom:10px}
+.quick-sheet.is-hourly .quick-date-bar{min-height:61px;padding:7px 9px;margin-bottom:10px}
+.quick-sheet.is-hourly .quick-title-stack h2{font-size:18px}
+.quick-sheet.is-hourly .quick-shift-editor{padding:9px 10px}
+.quick-sheet.is-hourly .quick-editor-list{gap:9px}
+.quick-sheet.is-hourly .quick-shift-label{margin-bottom:7px}
+.quick-sheet.is-hourly .quick-state-btn{min-height:46px;padding-block:7px}
+.quick-sheet.is-hourly .quick-presets{margin-top:9px}
+.quick-sheet.is-hourly .quick-save-note{margin-top:9px}
+.quick-sheet.is-hourly .shift-time-section{padding-top:8px;margin-top:8px}
+/* Separate wheel dialog: big touch targets, no keyboard or free-form time entry. */
+.time-picker-overlay{position:fixed;inset:0;z-index:160;background:rgba(12,23,36,.42);display:flex;align-items:flex-end;justify-content:center;padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px));animation:time-fade-in .16s ease-out}
+.time-picker-sheet{width:100%;max-width:430px;max-height:92dvh;overflow:auto;overscroll-behavior:contain;padding:9px 17px 17px;border-radius:25px;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:0 15px 65px #081a3438;animation:time-rise-in .2s ease-out}
+.time-picker-grabber{height:4px;width:35px;background:#cbd4de;border-radius:9px;margin:1px auto 16px}
+.time-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.time-picker-kicker{display:block;font-size:10px;font-weight:650;color:var(--muted);margin-bottom:5px}
+.time-picker-heading h2{font-size:19px;line-height:1.3;font-weight:780;letter-spacing:-.025em;margin:0}
+.time-picker-close{border:0;background:var(--surface-soft);color:var(--muted);border-radius:12px;width:38px;height:38px;font-size:26px;line-height:1;flex:none}
+.time-wheels{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:7px;width:100%;align-items:center;padding:0 14px}
+.time-wheel-column{min-width:0;text-align:center}
+.time-wheel-label{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-bottom:8px}
+.time-wheel-frame{position:relative;min-width:0}
+.time-wheel{height:220px;overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y mandatory;scroll-behavior:auto;scrollbar-width:none;overflow-anchor:none;padding:88px 0;position:relative;z-index:1;touch-action:pan-y;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(transparent,#000 31%,#000 69%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 31%,#000 69%,transparent)}
+.time-wheel::-webkit-scrollbar{display:none}
+.time-wheel:focus-visible{outline:2px solid #85b5dc;outline-offset:2px;border-radius:10px}
+.time-wheel-item{display:flex;align-items:center;justify-content:center;flex:none;height:44px;scroll-snap-align:center;color:var(--muted);font-size:23px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1;user-select:none;cursor:pointer}
+.time-wheel-item.selected{color:var(--ink);font-size:29px;font-weight:760}
+.time-wheel-center{position:absolute;pointer-events:none;top:88px;left:0;right:0;height:44px;background:var(--surface-soft);border-block:1px solid var(--line);border-radius:10px;z-index:0}
+.time-colon{align-self:center;color:var(--ink);font-size:27px;font-weight:750;transform:translateY(11px);text-align:center}
+.time-picker-hint{text-align:center;color:var(--muted);font-size:10px;line-height:1.6;margin:10px 0 16px}
+.time-picker-actions{display:grid;grid-template-columns:1fr 1.5fr;gap:10px}
+.time-picker-actions button{min-height:47px;border-radius:13px;font-size:12px;font-weight:740;border:1px solid var(--line)}
+.time-clear{background:var(--surface-soft);color:var(--muted)}
+.time-apply{background:#284d70;border-color:#284d70!important;color:#fff}
+.time-picker-actions button:focus-visible,.time-picker-close:focus-visible{outline:3px solid #85b5dc;outline-offset:2px}
+html[data-theme="dark"] .pay-incomplete-notice{background:#322b1d;border-color:#665232;color:#efcd8b}
+html[data-theme="dark"] .time-range-status.is-warning{color:#dfbd7f}
+html[data-theme="dark"] .time-value-button:not(:disabled):active{background:#2d4257}
+html[data-theme="dark"] .time-next-day[aria-pressed="true"] .time-next-day-check{background:#7da8cc;color:#0d2438;border-color:#7da8cc}
+html[data-theme="dark"] .time-apply{background:#3c6485;border-color:#3c6485!important}
+html[data-theme="dark"] .time-picker-grabber{background:#5e6e7c}
+html[data-theme="dark"] .time-picker-overlay{background:rgba(0,0,0,.64)}
+@keyframes time-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes time-rise-in{from{opacity:.6;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:360px){.time-value-button{padding:8px}.time-value-button strong{font-size:15px}.quick-sheet.is-hourly .quick-shift-editor{padding:8px}.time-picker-sheet{padding-inline:13px}.time-wheels{padding-inline:7px}}
+@media(prefers-reduced-motion:reduce){.time-picker-sheet,.time-picker-overlay{animation:none}.time-value-button,.pay-mode-option>span{transition:none}}
+
+/* Use the available phone height so both shifts remain easy to reach. */
+.quick-sheet.is-hourly{max-height:calc(100dvh - 24px);padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+#settings-form button[type="submit"],.pay-mode-option{scroll-margin-block:110px}

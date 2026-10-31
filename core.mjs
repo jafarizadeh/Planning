@@ -1,5 +1,5 @@
 export const SHIFTS = ["morning", "evening"];
-export const DEFAULT_SETTINGS = { language: "fr", theme: "light", weekStart: 1, morningName: "", eveningName: "", shiftRate: 40, payslipCap: 711 };
+export const DEFAULT_SETTINGS = { language: "fr", theme: "light", weekStart: 1, morningName: "", eveningName: "", shiftRate: 40, hourlyRate: 10, payMode: "shift", payslipCap: 711 };
 export const STATUS = { UNSET: "unset", WORK: "work", OFF: "off" };
 export const DATA_KEY = "shift-planner-records-v1";
 export const SETTINGS_KEY = "shift-planner-settings-v1";
@@ -19,6 +19,8 @@ export function sanitizeRecords(data) {
     if (!validDateKey(key) || !entry || typeof entry !== "object" || Array.isArray(entry)) continue;
     const clean = {};
     for (const shift of SHIFTS) if (validStates.has(entry[shift])) clean[shift] = entry[shift];
+    const timings = sanitizeTimings(entry.timings);
+    if(Object.keys(timings).length) clean.timings=timings;
     if (Object.keys(clean).length) result[key] = clean;
   }
   return result;
@@ -40,6 +42,8 @@ export function sanitizeSettings(data) {
     morningName: typeof x.morningName === "string" ? x.morningName.trim().slice(0,25) : "",
     eveningName: typeof x.eveningName === "string" ? x.eveningName.trim().slice(0,25) : "",
     shiftRate: validMoney(x.shiftRate, DEFAULT_SETTINGS.shiftRate),
+    hourlyRate: validMoney(x.hourlyRate, DEFAULT_SETTINGS.hourlyRate),
+    payMode: x.payMode === "hourly" ? "hourly" : "shift",
     payslipCap: validMoney(x.payslipCap, DEFAULT_SETTINGS.payslipCap)
   };
 }
@@ -98,7 +102,7 @@ export function payrollForMonth(workedShifts, inputSettings = DEFAULT_SETTINGS) 
 
 export function makeBackup(records,settings,monthlyPolicies={},audit=[]) {
   return {
-    app:"ShiftPlanner", schemaVersion:2, exportedAt:new Date().toISOString(),
+    app:"ShiftPlanner", schemaVersion:3, exportedAt:new Date().toISOString(),
     records:sanitizeRecords(records), settings:sanitizeSettings(settings),
     monthlyPolicies:sanitizeMonthlyPolicies(monthlyPolicies), audit:sanitizeAudit(audit)
   };
@@ -106,15 +110,19 @@ export function makeBackup(records,settings,monthlyPolicies={},audit=[]) {
 export function parseBackup(text) {
   let data;
   try { data=JSON.parse(text); } catch { throw Error("not-json"); }
-  if (!data || data.app!=="ShiftPlanner" || ![1,2].includes(data.schemaVersion) ||
+  if (!data || data.app!=="ShiftPlanner" || ![1,2,3].includes(data.schemaVersion) ||
       !data.records || typeof data.records!=="object" || Array.isArray(data.records)) {
     throw Error("not-backup");
   }
   for(const [key, entry] of Object.entries(data.records)){
-    if(!validDateKey(key) || !entry || typeof entry!=="object" || Array.isArray(entry) ||
-      Object.keys(entry).some(shift=>!SHIFTS.includes(shift)||!validStates.has(entry[shift]))) throw Error("not-backup");
+    if(!validDateKey(key) || !entry || typeof entry!=="object" || Array.isArray(entry)) throw Error("not-backup");
+    for(const field of Object.keys(entry)){
+      if(field==="timings" && data.schemaVersion===3){
+        if(!validTimingMap(entry.timings)) throw Error("not-backup");
+      }else if(!SHIFTS.includes(field)||!validStates.has(entry[field])) throw Error("not-backup");
+    }
   }
-  if(data.schemaVersion===2 &&
+  if(data.schemaVersion>=2 &&
      (!data.monthlyPolicies || typeof data.monthlyPolicies!=="object" ||
       Array.isArray(data.monthlyPolicies) || !Array.isArray(data.audit))) throw Error("not-backup");
   return {
@@ -142,7 +150,7 @@ export function sanitizeMonthlyPolicies(raw) {
     if(!Number.isFinite(Number(value.shiftRate)) || !Number.isFinite(Number(value.payslipCap)) ||
        Number(value.shiftRate)<0 || Number(value.payslipCap)<0) continue;
     const normalized = sanitizeSettings(value);
-    result[key] = {shiftRate:normalized.shiftRate,payslipCap:normalized.payslipCap};
+    result[key] = payPolicy(normalized);
   }
   return result;
 }
@@ -153,11 +161,12 @@ export function monthlyHistory(records,policies={},settings=DEFAULT_SETTINGS) {
     ...Object.keys(r).map(key=>key.slice(0,7)),
     ...Object.keys(safePolicies)
   ])].sort().reverse();
+  const analysis=timingAnalysis(r);
   return months.map(key=>{
     const [year,month] = key.split("-").map(Number);
     const stats = monthStats(r,year,month-1);
     const policy = safePolicies[key] || settings;
-    return {key,year,month,stats,pay:payrollForMonth(stats.work,policy)};
+    return {key,year,month,stats,pay:calculatePayroll(r,year,month-1,policy,analysis)};
   });
 }
 export function sanitizeAudit(raw) {
@@ -185,12 +194,25 @@ export function mergeHistory(existingRecords,importedRecords,existingPolicies={}
   let conflicts = 0;
   for(const [day,entry] of Object.entries(current)){
     const imported = { ...(records[day] || {}) };
+    const timings={...(imported.timings||{})};
     for(const shift of SHIFTS){
+      const ownTiming=entry.timings?.[shift];
       if(entry[shift]!==undefined){
-        if(imported[shift]!==undefined && imported[shift]!==entry[shift]) conflicts++;
+        if(imported[shift]!==undefined && imported[shift]!==entry[shift]){
+          conflicts++;
+          // Never pair an imported time range with a conflicting status.
+          delete timings[shift];
+        }
         imported[shift]=entry[shift];
       }
+      if(ownTiming){
+        if(timings[shift] && JSON.stringify(timings[shift])!==JSON.stringify(ownTiming)) conflicts++;
+        // A time range is atomic: never combine starts and ends from different backups.
+        timings[shift]={...ownTiming};
+      }
     }
+    if(Object.keys(timings).length) imported.timings=timings;
+    else delete imported.timings;
     records[day] = imported;
   }
   return {
@@ -198,4 +220,111 @@ export function mergeHistory(existingRecords,importedRecords,existingPolicies={}
     monthlyPolicies: { ...sanitizeMonthlyPolicies(importedPolicies), ...sanitizeMonthlyPolicies(existingPolicies) },
     conflicts
   };
+}
+
+
+// Hourly pay uses integer minutes and integer cents; round once per month.
+export function payPolicy(value=DEFAULT_SETTINGS){
+ const clean=sanitizeSettings(value);
+ return {payMode:clean.payMode,shiftRate:clean.shiftRate,hourlyRate:clean.hourlyRate,payslipCap:clean.payslipCap};
+}
+export function validClock(value){
+ return typeof value==="string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+function validTimingMap(value){
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ return Object.entries(value).every(([shift,range])=>SHIFTS.includes(shift)&&
+   range&&typeof range==="object"&&!Array.isArray(range)&&
+   Object.entries(range).every(([field,v])=>
+    (field==="start"||field==="end") ? (v===""||validClock(v)) : field==="nextDay"&&typeof v==="boolean"));
+}
+export function sanitizeTimings(value){
+ const result={};
+ if(!value||typeof value!=="object"||Array.isArray(value))return result;
+ for(const shift of SHIFTS){
+  const r=value[shift];
+  if(!r||typeof r!=="object"||Array.isArray(r))continue;
+  const start=validClock(r.start)?r.start:"",end=validClock(r.end)?r.end:"";
+  if(start||end||r.nextDay===true) result[shift]={start,end,nextDay:r.nextDay===true};
+ }
+ return result;
+}
+export function getTiming(records,key,shift){
+ const timing=sanitizeTimings(records?.[key]?.timings)[shift];
+ return timing?{...timing}:{start:"",end:"",nextDay:false};
+}
+export function updateTiming(records,key,shift,patch){
+ if(!validDateKey(key)||!SHIFTS.includes(shift)||!patch||typeof patch!=="object"||Array.isArray(patch))throw Error("invalid-time");
+ if(Object.entries(patch).some(([k,v])=>
+    (k==="start"||k==="end")?!(v===""||validClock(v)):k!=="nextDay"||typeof v!=="boolean"))throw Error("invalid-time");
+ const range={...getTiming(records,key,shift),...patch};
+ const entry={...(records[key]||{})};
+ const timings={...(entry.timings||{})};
+ if(!range.start&&!range.end&&!range.nextDay)delete timings[shift];
+ else timings[shift]=range;
+ if(Object.keys(timings).length)entry.timings=timings;
+ else delete entry.timings;
+ const result={...records};
+ if(Object.keys(entry).length)result[key]=entry;
+ else delete result[key];
+ return result;
+}
+export function timeRangeDetails(range){
+ if(!validClock(range?.start)||!validClock(range?.end))return {state:"missing",minutes:0};
+ const parse=v=>Number(v.slice(0,2))*60+Number(v.slice(3));
+ const start=parse(range.start),end=parse(range.end)+(range.nextDay===true?1440:0);
+ const minutes=end-start;
+ // Overnight is explicit. Equal times must never accidentally create a 24-hour shift.
+ if(minutes<=0||minutes>=1440)return {state:"invalid",minutes:0,start,end};
+ return {state:"ready",minutes,start,end};
+}
+export function timingAnalysis(records){
+ const details={},intervals=[];
+ for(const [key,entry] of Object.entries(records)){
+  if(!validDateKey(key))continue;
+  const [y,m,d]=key.split("-").map(Number);
+  const base=Date.UTC(y,m-1,d)/60000;
+  for(const shift of SHIFTS){
+   const id=key+":"+shift;
+   if(getStatus(records,key,shift)!=="work"){
+    details[id]={state:"inactive",minutes:0};continue;
+   }
+   const detail=timeRangeDetails(entry.timings?.[shift]);
+   details[id]=detail;
+   if(detail.state==="ready")intervals.push({id,start:base+detail.start,end:base+detail.end});
+  }
+ }
+ intervals.sort((a,b)=>a.start-b.start);
+ // Compare only intervals still active: an end exactly equal to the next start is valid.
+ let active=[];
+ for(const interval of intervals){
+  active=active.filter(old=>old.end>interval.start);
+  for(const old of active){
+   details[old.id]={...details[old.id],state:"overlap",minutes:0};
+   details[interval.id]={...details[interval.id],state:"overlap",minutes:0};
+  }
+  active.push(interval);
+ }
+ return details;
+}
+export function calculatePayroll(records,year,month,inputPolicy=DEFAULT_SETTINGS,analysis=null){
+ const policy=payPolicy(inputPolicy),stats=monthStats(records,year,month);
+ if(policy.payMode==="shift")return {...payrollForMonth(stats.work,policy),mode:"shift",minutes:0,paidShifts:stats.work,pendingShifts:0};
+ const details=analysis||timingAnalysis(records);
+ let minutes=0,paidShifts=0,pendingShifts=0;
+ const prefix=periodKey(year,month);
+ for(const [key,entry] of Object.entries(records)){
+  if(!validDateKey(key)||key.slice(0,7)!==prefix)continue;
+  for(const shift of SHIFTS){
+   if(getStatus(records,key,shift)!=="work")continue;
+   const range=details[key+":"+shift];
+   if(range?.state==="ready"){minutes+=range.minutes;paidShifts++;}
+   else pendingShifts++;
+  }
+ }
+ const rateCents=Math.round(policy.hourlyRate*100),capCents=Math.round(policy.payslipCap*100);
+ const totalCents=Math.round(minutes*rateCents/60);
+ const payslipCents=Math.min(capCents,totalCents),envelopeCents=totalCents-payslipCents;
+ const progressPercent=capCents===0?(totalCents>0?100:0):Math.min(100,payslipCents/capCents*100);
+ return {mode:"hourly",shifts:stats.work,minutes,paidShifts,pendingShifts,rateCents,capCents,totalCents,payslipCents,envelopeCents,progressPercent};
 }
