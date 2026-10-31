@@ -90,8 +90,6 @@ html[data-theme="dark"] .time-picker-overlay{background:rgba(0,0,0,.64)}
 .time-source-label{color:var(--muted);font-size:9.5px;font-weight:600}
 .time-reset{border:0;background:transparent;color:var(--blue);font-size:10px;font-weight:700;padding:7px 2px;min-height:32px;touch-action:manipulation}
 .time-reset:focus-visible,.time-value-button:focus-visible{outline:3px solid #88b5d8;outline-offset:1px}
-.finance-grid.single-payment{grid-template-columns:1fr}
-.finance-grid.single-payment .payslip-card{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:14px;min-height:76px;height:auto;padding:14px 16px}
-.finance-grid.single-payment .payslip-value{margin:0;font-size:23px;line-height:1.2}
-.finance-grid.single-payment .finance-head-text strong{font-size:12px}
-@media(max-width:360px){.default-shift-row{padding:10px}.finance-grid.single-payment .payslip-value{font-size:20px}}
+
+/* Single payment shows only the existing Total strip, with no duplicate card. */
+.finance-grid[hidden],.payslip-card[hidden]{display:none!important}

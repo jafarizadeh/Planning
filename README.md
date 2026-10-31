@@ -3,17 +3,26 @@
 A standalone, mobile-first Progressive Web App for morning/evening shifts and pay.
 Branch: `app/personal`. The employer application is separate on `app/equipe`.
 
-## Development: default hours and payment modes (v2.1)
+## Development: persistent global modes and a simpler calendar (v2.2)
 
 Settings → **Rémunération** offers two modes:
 
 - **Par créneau:** the existing flat rate per worked shift (default €40).
 - **À l’heure:** an independent hourly rate (initial value €10/hour).
 
-Save settings with **Enregistrer**. The mode/rates apply to the month displayed
-in the settings card. Existing other months retain their stored policies.
-Editing an older month's rates does not change the default for future months.
-A mode change on a month with recorded work requires confirmation.
+Save settings with **Enregistrer**. Both **Mode de calcul** (shift/hourly) and
+**Versement** (single/split) are global preferences: changing the displayed month,
+year, reopening the app or going offline never resets them. A choice saved while
+viewing a past month applies to all months too.
+
+**Important:** changing either global mode intentionally recalculates the displayed
+amounts for all recorded months, using their own rates and times. A confirmation
+explains this before saving when any worked shifts exist. Cancelling leaves all
+saved settings and data unchanged. Work statuses and personal times are not erased.
+
+Stored rates, payslip caps and default schedules remain associated with their
+recorded months. Editing those numeric/time values in an older month does not
+replace the defaults used by new months. Only the two mode switches are global.
 
 In hourly mode, each morning/evening section has **Début** and **Fin** below
 its three status buttons. Tap either time to open a 24-hour hour/minute wheel;
@@ -42,13 +51,16 @@ For example, 09:15–12:45 at €10/hour means 210 minutes and €35.
 
 - Minutes are counted exactly. Hourly rates are stored in cents; the aggregate
   monthly amount is rounded to the nearest cent once, not per shift.
-- **Versement → En une fois:** all wages go into the single payment/payslip,
-  without a cap. The envelope, cap field and progress meter are hidden.
+- **Versement → En une fois:** show only the **Total** strip on the home screen.
+  The entire payslip/envelope card group, cap field and progress meter are hidden.
+  No duplicate payslip amount appears in the current month or a history subtitle.
 - **Versement → En deux fois:** the configured cap applies; excess goes into
   the envelope. At €800 total and a €711 cap, this remains €711 + €89.
 - Pay method and payment split are independent. Each inactive rate/cap field
   is both hidden and disabled; its saved value is retained for switching back.
 - Each worked shift still counts as half a day in the day counters.
+- The extra **M Matin | S Soir** calendar key has been removed. Both daily shift
+  indicators and their accessible labels remain available.
 - There is no next-day checkbox. For default-aware periods, an end earlier
   than the start automatically crosses midnight; a small +1 day indicator
   clarifies it. Equal times are invalid, not a 24-hour shift. Legacy manual
@@ -62,13 +74,15 @@ For example, 09:15–12:45 at €10/hour means 210 minutes and €35.
 
 ### History and storage
 
-Data remains on this device in localStorage and IndexedDB. Archive schema 4
-adds default schedules and single/split payment; v1/v2/v3 backups still import.
-Past manual-only hourly policies retain their original incomplete-time behaviour
-so an update or unrelated settings change cannot silently recalculate history.
-Current/future periods adopt default hours; personal times remain untouched.
-Exports include both modes, both rates, monthly default schedules and overrides. Import keeps current records
-and current monthly policies on conflicts, rather than overwriting them.
+Data remains on this device in localStorage and IndexedDB. Archive schema 5
+records globally selected modes together with per-month values; v1/v2/v3/v4
+backups still import. Older monthly mode values remain in preserved snapshots,
+but no longer override the current global choices. Historical manual-only time
+ranges stay manual-only: missing times are visibly pending rather than guessed.
+Current/future periods use configured default hours; personal times keep priority.
+Exports contain the global modes, both rates, monthly schedules and overrides.
+Import keeps current records and current monthly values on conflicts. Importing
+into an existing app does not replace its global mode selection.
 
 Keep a separate exported backup before changing devices or deleting browser
 site data. GitHub and Vercel do not store the user's work records.
@@ -85,7 +99,7 @@ Chrome window on Ubuntu, using the app's dedicated local profile.
 ## Tests
 
 ```sh
-node --test tests.mjs hourly-tests.mjs default-pay-tests.mjs
+node --test tests.mjs hourly-tests.mjs default-pay-tests.mjs global-modes-tests.mjs
 ```
 
 Optional mobile browser regression (Puppeteer is needed):
@@ -94,6 +108,7 @@ Optional mobile browser regression (Puppeteer is needed):
 # Serve this directory separately before running the browser tests.
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node hourly-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node default-pay-browser-test.cjs
+PLANNING_TEST_URL=http://127.0.0.1:8080/ node global-modes-browser-test.cjs
 ```
 
 Set `PUPPETEER_MODULE` to an installed Puppeteer module when it is outside the

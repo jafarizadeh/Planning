@@ -90,14 +90,15 @@ test('shift/hourly and single/split switches are independent',()=>{
   assert.equal(p.envelopeCents,paymentMode==='single'?0:(mode==='shift'?3000:1000));
  }
 });
-test('defaults and payment methods are frozen independently for each historic month',()=>{
+test('stored monthly rates and default hours survive a globally chosen single payment',()=>{
  let r=mark({},'morning','2026-09-05');r=mark(r,'morning','2026-10-05');
  const september=payPolicy({...hourly,paymentMode:'split',payslipCap:20});
  const october=payPolicy({...hourly,paymentMode:'single',defaultTimes:{morning:{start:'09:00',end:'15:00'}}});
  const policies={'2026-09':september,'2026-10':october};
  const history=monthlyHistory(r,policies,{...october,hourlyRate:99});
  assert.equal(history[0].pay.totalCents,6000);assert.equal(history[0].pay.envelopeCents,0);
- assert.equal(history[1].pay.totalCents,4000);assert.equal(history[1].pay.payslipCents,2000);assert.equal(history[1].pay.envelopeCents,2000);
+ assert.equal(history[1].pay.totalCents,4000);assert.equal(history[1].pay.payslipCents,4000);assert.equal(history[1].pay.envelopeCents,0);
+ assert.equal(policies["2026-09"].paymentMode,"split");assert.equal(policies["2026-09"].payslipCap,20);
 });
 test('legacy manual-only hourly months retain pending/incomplete hours and original pay',()=>{
  let r=mark({},'morning','2026-09-05');r=mark(r,'morning','2026-10-05');
@@ -106,18 +107,19 @@ test('legacy manual-only hourly months retain pending/incomplete hours and origi
  const history=monthlyHistory(r,policies,hourly);
  assert.equal(history[0].pay.totalCents,4000);assert.equal(history[1].pay.totalCents,0);assert.equal(history[1].pay.pendingShifts,1);
 });
-test('hourly overlap analysis excludes work paid by a different monthly shift policy',()=>{
+test('global hourly analysis detects overlap even when an old snapshot says shift mode',()=>{
  let r=mark({},'evening','2026-09-30');r=updateTiming(r,'2026-09-30','evening',{start:'22:00',end:'12:00',nextDay:true});
  r=mark(r,'morning','2026-10-01');
  const policies={'2026-09':payPolicy({...hourly,payMode:'shift'}),'2026-10':hourly};
  const analysis=timingAnalysis(r,policies,hourly);
- assert.equal(analysis['2026-10-01:morning'].state,'ready');
- assert.equal(calculatePayroll(r,2026,9,hourly,analysis).totalCents,4000);
+ assert.equal(analysis['2026-10-01:morning'].state,'overlap');
+ assert.equal(calculatePayroll(r,2026,9,hourly,analysis).totalCents,0);
+ assert.equal(policies['2026-09'].payMode,'shift');
 });
-test('schema 4 backup round-trips defaults, custom hours and payment mode',()=>{
+test('schema 5 backup round-trips defaults, custom hours and payment mode',()=>{
  const r=updateTiming(mark(),'2026-10-05','morning',{start:'09:30',end:'12:30'});
  const policy=payPolicy({...hourly,paymentMode:'single',defaultTimes:{morning:{start:'08:00',end:'15:00'}}});
- const b=makeBackup(r,policy,{'2026-10':policy});assert.equal(b.schemaVersion,4);
+ const b=makeBackup(r,policy,{'2026-10':policy});assert.equal(b.schemaVersion,5);
  const copy=parseBackup(JSON.stringify(b));assert.deepEqual(copy.records,r);
  assert.deepEqual(copy.monthlyPolicies['2026-10'],policy);assert.equal(rate(copy.records,copy.settings).totalCents,3000);
 });

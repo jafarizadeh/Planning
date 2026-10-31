@@ -114,7 +114,7 @@ export function payrollForMonth(workedShifts, inputSettings = DEFAULT_SETTINGS) 
 
 export function makeBackup(records,settings,monthlyPolicies={},audit=[]) {
   return {
-    app:"ShiftPlanner", schemaVersion:4, exportedAt:new Date().toISOString(),
+    app:"ShiftPlanner", schemaVersion:5, exportedAt:new Date().toISOString(),
     records:sanitizeRecords(records), settings:sanitizeSettings(settings),
     monthlyPolicies:sanitizeMonthlyPolicies(monthlyPolicies), audit:sanitizeAudit(audit)
   };
@@ -122,7 +122,7 @@ export function makeBackup(records,settings,monthlyPolicies={},audit=[]) {
 export function parseBackup(text) {
   let data;
   try { data=JSON.parse(text); } catch { throw Error("not-json"); }
-  if (!data || data.app!=="ShiftPlanner" || ![1,2,3,4].includes(data.schemaVersion) ||
+  if (!data || data.app!=="ShiftPlanner" || ![1,2,3,4,5].includes(data.schemaVersion) ||
       !data.records || typeof data.records!=="object" || Array.isArray(data.records)) {
     throw Error("not-backup");
   }
@@ -179,7 +179,7 @@ export function monthlyHistory(records,policies={},settings=DEFAULT_SETTINGS) {
   return months.map(key=>{
     const [year,month] = key.split("-").map(Number);
     const stats = monthStats(r,year,month-1);
-    const policy = safePolicies[key] || settings;
+    const policy = policyForPeriod(key,safePolicies,settings);
     return {key,year,month,stats,pay:calculatePayroll(r,year,month-1,policy,analysis)};
   });
 }
@@ -243,6 +243,15 @@ export function payPolicy(value=DEFAULT_SETTINGS){
  return {payMode:clean.payMode,shiftRate:clean.shiftRate,hourlyRate:clean.hourlyRate,
   payslipCap:clean.payslipCap,paymentMode:clean.paymentMode,
   defaultTimes:sanitizeDefaultTimes(clean.defaultTimes),useDefaultTimes:clean.useDefaultTimes};
+}
+// Calculation and payment modes are global preferences. A saved month owns its
+// rates and time defaults, never the switches selected in Settings. Keep stored
+// snapshots intact: explicit times/rates can still be inspected and exported.
+export function policyForPeriod(key,monthlyPolicies={},globalSettings=DEFAULT_SETTINGS){
+ const global=payPolicy(globalSettings);
+ const saved=validPeriodKey(key)&&monthlyPolicies&&Object.hasOwn(monthlyPolicies,key)?monthlyPolicies[key]:null;
+ const values=payPolicy(saved||globalSettings);
+ return {...values,payMode:global.payMode,paymentMode:global.paymentMode};
 }
 export function validClock(value){
  return typeof value==="string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
@@ -335,7 +344,7 @@ export function timingAnalysis(records,policies=null,fallbackPolicy=DEFAULT_SETT
   if(!validDateKey(key))continue;
   const [y,m,d]=key.split("-").map(Number);
   const base=Date.UTC(y,m-1,d)/60000;
-  const policy=policies===null?null:payPolicy(policies[key.slice(0,7)]||fallbackPolicy);
+  const policy=policies===null?null:policyForPeriod(key.slice(0,7),policies,fallbackPolicy);
   for(const shift of SHIFTS){
    const id=key+":"+shift;
    if(getStatus(records,key,shift)!=="work"||(policy&&policy.payMode!=="hourly")){

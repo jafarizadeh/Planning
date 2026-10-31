@@ -89,19 +89,20 @@ test('a crossing-month shift is counted in the start-date month',()=>{
  assert.equal(pay(r).minutes,240);assert.equal(pay(r).totalCents,4000);
  assert.equal(calculatePayroll(r,2026,10,hourly).totalCents,0);
 });
-test('historic policy stays shift-based when new months become hourly',()=>{
+test('global hourly mode replaces stored month modes without inventing missing legacy hours',()=>{
  let r=updateStatus({},'2026-09-05','morning','work');
  r=add(r,'2026-10-05','morning','09:00','12:30');
  const policies=sanitizeMonthlyPolicies({'2026-09':{shiftRate:40,payslipCap:711},'2026-10':hourly});
  const history=monthlyHistory(r,policies,hourly);
  assert.equal(history[0].pay.mode,'hourly');assert.equal(history[0].pay.totalCents,3500);
- assert.equal(history[1].pay.mode,'shift');assert.equal(history[1].pay.totalCents,4000);
+ assert.equal(history[1].pay.mode,'hourly');assert.equal(history[1].pay.totalCents,0);
+ assert.equal(history[1].pay.pendingShifts,1);assert.equal(policies['2026-09'].shiftRate,40);
 });
-test('schema 4 export includes complete or partial times and monthly pay modes',()=>{
+test('schema 5 export includes complete or partial times and monthly pay modes',()=>{
  let r=add({},'2026-10-05','morning','09:15','12:45');
  r=updateTiming(r,'2026-10-05','evening',{start:'18:00'});
  const backup=makeBackup(r,hourly,{'2026-10':hourly});
- assert.equal(backup.schemaVersion,4);
+ assert.equal(backup.schemaVersion,5);
  const copy=parseBackup(JSON.stringify(backup));
  assert.deepEqual(copy.records,r);assert.equal(copy.settings.payMode,'hourly');
  assert.equal(copy.monthlyPolicies['2026-10'].hourlyRate,10);

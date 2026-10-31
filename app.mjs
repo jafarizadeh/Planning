@@ -3,7 +3,7 @@ import {
   dateKey, calendarCells, getStatus, updateStatus, monthStats,
   overallStats, sanitizeRecords, sanitizeSettings, payrollForMonth, makeBackup, parseBackup,
   ARCHIVE_KEY, ARCHIVE_FALLBACK_KEY, periodKey, sanitizeMonthlyPolicies,
-  sanitizeAudit, monthlyHistory, mergeHistory, payPolicy, calculatePayroll, getTiming, updateTiming, timingAnalysis,
+  sanitizeAudit, monthlyHistory, mergeHistory, payPolicy, policyForPeriod, calculatePayroll, getTiming, updateTiming, timingAnalysis,
   effectiveTiming, resetTiming, sanitizeDefaultTimes, validDefaultSchedule
 } from "./core.mjs";
 import { loadArchiveFromDb, saveArchiveToDb, requestDurableStorage } from "./archive-db.mjs";
@@ -160,7 +160,7 @@ function readJSON(key, fallback) {
   catch { return fallback; }
 }
 const rawSnapshot = readJSON(ARCHIVE_KEY,null) || readJSON(ARCHIVE_FALLBACK_KEY,null);
-const localSnapshot = [2,3,4].includes(rawSnapshot?.schemaVersion) ? rawSnapshot : null;
+const localSnapshot = [2,3,4,5].includes(rawSnapshot?.schemaVersion) ? rawSnapshot : null;
 let records = sanitizeRecords(localSnapshot ? localSnapshot.records : readJSON(DATA_KEY, {}));
 let settings = sanitizeSettings(localSnapshot ? localSnapshot.settings : readJSON(SETTINGS_KEY, DEFAULT_SETTINGS));
 let monthlyPolicies = sanitizeMonthlyPolicies(localSnapshot?.monthlyPolicies);
@@ -226,13 +226,11 @@ function monthLocale() {
 }
 function shiftName(shift) { return settings[shift+"Name"] || t(shift); }
 function selectedPolicy() {
-  return monthlyPolicies[periodKey(year,month)] || payPolicy(settings);
+  return policyForPeriod(periodKey(year,month),monthlyPolicies,settings);
 }
 function recordedMonthPolicy(key) {
-  if(monthlyPolicies[key]) return monthlyPolicies[key];
-  const policy=payPolicy(settings);
-  monthlyPolicies[key] = policy;
-  return policy;
+  if(!monthlyPolicies[key])monthlyPolicies[key]=payPolicy(settings);
+  return policyForPeriod(key,monthlyPolicies,settings);
 }
 function auditChange(type,period,detail) {
   const at=new Date().toISOString();
@@ -247,7 +245,7 @@ function escapeHTML(value) {
 function persist(_key, _value) {
   hasUnsavedUserEdit=true;
   const snapshot={
-    schemaVersion:4,savedAt:Math.max(Date.now(),lastSavedAt+1),records,settings,
+    schemaVersion:5,savedAt:Math.max(Date.now(),lastSavedAt+1),records,settings,
     monthlyPolicies:{...monthlyPolicies},audit:[...audit]
   };
   let savedLocally=true;
@@ -272,7 +270,7 @@ function persist(_key, _value) {
 async function initializeArchive() {
   try {
     const stored=await loadArchiveFromDb();
-    const canRestore=stored && [2,3,4].includes(stored.schemaVersion) && !hasUnsavedUserEdit &&
+    const canRestore=stored && [2,3,4,5].includes(stored.schemaVersion) && !hasUnsavedUserEdit &&
       ((!hadLegacyRecords && !hasLocalSnapshot) ||
        (hasLocalSnapshot && Number(stored.savedAt)>lastSavedAt));
     if(canRestore){
@@ -467,8 +465,6 @@ function renderTranslations() {
   }
   $("previous-month").setAttribute("aria-label",t("prevMonth"));
   $("next-month").setAttribute("aria-label",t("nextMonth"));
-  $("morning-key").textContent = shiftName("morning");
-  $("evening-key").textContent = shiftName("evening");
   $("language-select").value = settings.language;
   $("weekstart-select").value = String(settings.weekStart);
   pickerControls.refresh();
@@ -492,9 +488,12 @@ function renderPayroll(stats) {
   $("pay-incomplete-notice").hidden=!hourly||pay.pendingShifts===0;
   $("pay-incomplete-notice").textContent=t("pendingPay").replace("{count}",num(pay.pendingShifts));
   const split=pay.paymentMode!=="single";
-  document.querySelector(".finance-grid").classList.toggle("single-payment",!split);
+  // A single payment needs only the Total strip: no duplicate payslip or envelope.
+  document.querySelector(".finance-grid").hidden=!split;
+  document.querySelector(".payslip-card").hidden=!split;
   document.querySelector(".payslip-footer").hidden=!split;
   $("envelope-card").hidden=!split;
+  document.querySelector('[data-text="payBreakdown"]').textContent=t(split?"payBreakdown":"financeSettings");
   const available=split&&pay.envelopeCents>0;
   if (!available) envelopeOpen = false;
   $("finance-period").textContent = monthLocale();
@@ -503,7 +502,7 @@ function renderPayroll(stats) {
   $("payslip-cap").textContent = split?euro(pay.capCents):"";
   $("payslip-meter-fill").style.width = pay.progressPercent + "%";
   $("payslip-meter").setAttribute("aria-valuenow", String(Math.round(pay.progressPercent)));
-  $("payslip-meter").setAttribute("aria-valuetext", euro(pay.payslipCents) + " / " + euro(pay.capCents));
+  $("payslip-meter").setAttribute("aria-valuetext",split?euro(pay.payslipCents)+" / "+euro(pay.capCents):"");
   $("payslip-meter").setAttribute("aria-label", t("payslipTitle"));
   $("payslip-percent").textContent = num(Math.round(pay.progressPercent)) + " % " + t("payUsage");
   $("envelope-amount").textContent = euro(pay.envelopeCents);
@@ -529,11 +528,12 @@ function renderHistory() {
   root.innerHTML=entries.map(entry=>{
     const stamp=new Intl.DateTimeFormat(locales[settings.language],{month:"long",year:"numeric"})
       .format(new Date(entry.year,entry.month-1,15));
-    const details=num(entry.stats.halfDays)+" "+t("daysUnit")+" · "+
-      (entry.pay.mode==="hourly"?durationText(entry.pay.minutes)+" · ":"")+
-      t("payslipTitle")+" "+euro(entry.pay.payslipCents)+
-      (entry.pay.paymentMode==="single"?"":" · "+t("envelopeTitle")+" "+euro(entry.pay.envelopeCents))+
-      (entry.pay.pendingShifts?" · "+t("pendingPay").replace("{count}",num(entry.pay.pendingShifts)):"");
+    const details=[num(entry.stats.halfDays)+" "+t("daysUnit"),
+      entry.pay.mode==="hourly"?durationText(entry.pay.minutes):"",
+      entry.pay.paymentMode!=="single"?t("payslipTitle")+" "+euro(entry.pay.payslipCents):"",
+      entry.pay.paymentMode!=="single"?t("envelopeTitle")+" "+euro(entry.pay.envelopeCents):"",
+      entry.pay.pendingShifts?t("pendingPay").replace("{count}",num(entry.pay.pendingShifts)):""
+    ].filter(Boolean).join(" · ");
     return '<button type="button" class="history-month '+
       (entry.key===periodKey(year,month)?"is-current":"")+
       '" data-period="'+entry.key+'"><span class="history-month-main">'+
@@ -909,10 +909,10 @@ $("settings-form").addEventListener("submit",event=>{
   event.preventDefault();
   const selectedMonth=periodKey(year,month),oldPolicy=payPolicy(selectedPolicy());
   const updatedPolicy=payPolicy({
-    payMode:document.querySelector('input[name="pay-mode"]:checked')?.value||oldPolicy.payMode,
+    payMode:document.querySelector('input[name="pay-mode"]:checked')?.value||settings.payMode,
     shiftRate:$("shift-rate-input").disabled?oldPolicy.shiftRate:$("shift-rate-input").value,
     hourlyRate:$("hourly-rate-input").disabled?oldPolicy.hourlyRate:$("hourly-rate-input").value,
-    paymentMode:document.querySelector('input[name="payment-mode"]:checked')?.value||oldPolicy.paymentMode,
+    paymentMode:document.querySelector('input[name="payment-mode"]:checked')?.value||settings.paymentMode,
     payslipCap:$("payslip-cap-input").disabled?oldPolicy.payslipCap:$("payslip-cap-input").value,
     defaultTimes:draftDefaultTimes,
     useDefaultTimes:oldPolicy.useDefaultTimes||defaultHoursTouched
@@ -920,19 +920,29 @@ $("settings-form").addEventListener("submit",event=>{
   if(updatedPolicy.payMode==="hourly"&&!validDefaultSchedule(draftDefaultTimes)){
     showToast(t("invalidDefaultSchedule"));return;
   }
-  const changedMoney=JSON.stringify(updatedPolicy)!==JSON.stringify(oldPolicy);
-  if(updatedPolicy.payMode!==oldPolicy.payMode&&monthStats(records,year,month).work>0){
-    if(!confirm(t("modeConfirm").replace("{month}",monthLocale())))return;
-  }
+  const modesChanged=updatedPolicy.payMode!==settings.payMode||updatedPolicy.paymentMode!==settings.paymentMode;
+  // Modes affect EVERY month. Confirm before intentionally recalculating recorded
+  // work; cancel must not modify any preference, monthly policy or recorded time.
+  if(modesChanged&&overallStats(records).work>0&&!confirm(t("modeConfirm")))return;
+  const onlyValues=policy=>{
+    const {payMode,paymentMode,...values}=policy;return values;
+  };
+  const valuesChanged=JSON.stringify(onlyValues(updatedPolicy))!==JSON.stringify(onlyValues(oldPolicy));
   rememberExistingMonths();
-  if(changedMoney){
+  if(valuesChanged){
     monthlyPolicies[selectedMonth]=updatedPolicy;
     auditChange("settings",selectedMonth,JSON.stringify(oldPolicy)+" > "+JSON.stringify(updatedPolicy));
   }
+  if(modesChanged){
+    auditChange("settings","","Global modes: "+settings.payMode+"/"+settings.paymentMode+
+      " > "+updatedPolicy.payMode+"/"+updatedPolicy.paymentMode);
+  }
   const today=new Date(),currentPeriod=periodKey(today.getFullYear(),today.getMonth());
-  // Editing a historic month must never change defaults for future months.
-  const defaults=changedMoney&&selectedMonth>=currentPeriod?updatedPolicy:payPolicy(settings);
+  // Old-month monetary/time edits remain local to that month; both switches are
+  // ALWAYS stored globally, including when Settings was opened from a past month.
+  const defaults=valuesChanged&&selectedMonth>=currentPeriod?updatedPolicy:payPolicy(settings);
   settings=sanitizeSettings({...defaults,
+    payMode:updatedPolicy.payMode,paymentMode:updatedPolicy.paymentMode,
     language:$("language-select").value,
     theme:document.querySelector('input[name="theme"]:checked')?.value||settings.theme,
     weekStart:Number($("weekstart-select").value),
@@ -942,7 +952,7 @@ $("settings-form").addEventListener("submit",event=>{
   persist(SETTINGS_KEY,settings);renderAll();showToast(t("settingsSaved"));
 });
 document.querySelectorAll('input[name="pay-mode"],input[name="payment-mode"]').forEach(input=>{
-  input.addEventListener("change",()=>{if(input.name==="pay-mode")defaultHoursTouched=true;updatePayModePreview();});
+  input.addEventListener("change",updatePayModePreview);
 });
 document.querySelectorAll('[data-default-time]').forEach(button=>{
   button.addEventListener("click",()=>openDefaultTime(button));
@@ -998,7 +1008,7 @@ window.addEventListener("storage",event=>{
   if(event.key!==ARCHIVE_KEY || !event.newValue) return;
   let updated;
   try { updated=JSON.parse(event.newValue); } catch { return; }
-  if(!updated || ![2,3,4].includes(updated.schemaVersion) || Number(updated.savedAt)<=lastSavedAt) return;
+  if(!updated || ![2,3,4,5].includes(updated.schemaVersion) || Number(updated.savedAt)<=lastSavedAt) return;
   records=sanitizeRecords(updated.records);
   settings=sanitizeSettings(updated.settings);
   monthlyPolicies=sanitizeMonthlyPolicies(updated.monthlyPolicies);

@@ -58,7 +58,7 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
    assert.equal(await page.$('.time-picker-sheet'),null);
   };
   assert.equal(await page.$eval('html',e=>e.lang),'fr');
-  assert.equal((await getArchive()).schemaVersion,4,'Old archives migrate to timing-aware schema');
+  assert.equal((await getArchive()).schemaVersion,5,'Old archives migrate to timing-aware schema');
   assert.equal((await getArchive()).monthlyPolicies['2026-09'].payMode,'shift');
   await openDay();
   assert.equal(await page.$$eval('.shift-time-section:not([hidden])',e=>e.length),0);
@@ -72,7 +72,7 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   assert.equal(await page.$eval('#shift-rate-field',e=>e.hidden),true);
   await page.screenshot({path:OUT+'/planning-hourly-settings.png',fullPage:true});
   await page.click('#settings-form button[type="submit"]');
-  assert.ok(dialogs.at(-1).includes('octobre 2026'));
+  assert.ok(dialogs.at(-1).includes('tous les mois'));
   await page.click('#nav-home');
   assert.equal(await getSalary(),40);
   assert.equal(await page.$eval('#pay-incomplete-notice',e=>e.hidden),true);
@@ -107,15 +107,16 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await openDay();assert.equal(await page.$$eval('.shift-time-section:not([hidden])',e=>e.length),0);await page.click('.quick-close');
   await setMode('hourly');assert.equal(await getSalary(),75);
   assert.equal((await getArchive()).records['2026-10-05'].timings.evening.end,'22:00');
-  await page.click('#previous-month');assert.equal(await getSalary(),52);
+  await page.click('#previous-month');assert.equal(await getSalary(),0);
+  assert.equal(await page.$eval('#pay-incomplete-notice',e=>e.hidden),false,'Legacy incomplete hours remain unguessed');
   await page.click('#nav-settings');
-  assert.equal(await page.$eval('input[name="pay-mode"]:checked',e=>e.value),'shift');
+  assert.equal(await page.$eval('input[name="pay-mode"]:checked',e=>e.value),'hourly');
   assert.equal(await page.$eval('#shift-rate-input',e=>Number(e.value)),52);
   await page.click('#nav-home');await page.click('#next-month');
   await setMode('hourly',12.5);assert.equal(await getSalary(),93.75);
   // An intentional conversion can be cancelled; no persistent mode/rate rewrite.
   approve=false;await setMode('shift');approve=true;
-  assert.equal(await getSalary(),93.75);assert.equal((await getArchive()).monthlyPolicies['2026-10'].payMode,'hourly');
+  assert.equal(await getSalary(),93.75);assert.equal((await getArchive()).settings.payMode,'hourly');
   // The editor and wheel fit small phones, both themes, and all supported languages.
   for(const lang of ['en','de','es','fa','fr']){
    await page.click('#nav-settings');await page.select('#language-select',lang);
@@ -153,7 +154,7 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   // Confirm the asynchronous on-device mirror before exercising recovery.
   await page.waitForFunction(async()=>{
    const {loadArchiveFromDb}=await import('./archive-db.mjs');const s=await loadArchiveFromDb();
-   return s?.schemaVersion===4&&s.records['2026-10-05']?.timings?.morning?.start==='09:30';
+   return s?.schemaVersion===5&&s.records['2026-10-05']?.timings?.morning?.start==='09:30';
   });
   await page.evaluate(()=>localStorage.clear());
   await page.reload({waitUntil:'networkidle0'});await page.waitForFunction(()=>document.documentElement.dataset.archiveReady==='true');
