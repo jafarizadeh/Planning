@@ -13,19 +13,21 @@ export function createTimePicker({getText}){
   if(underlying)underlying.inert=previousInert;
   if(trigger?.isConnected)trigger.focus({preventScroll:true});
  }
- function open({value="",label="",trigger,onCommit}){
+ function open({value="",label="",trigger,onCommit,allowClear=true,clearLabel=""}){
   close();
   const valid=/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
   const hour=valid?Number(value.slice(0,2)):0;
   const minute=valid?Number(value.slice(3)):0;
-  const underlying=document.getElementById("sheet-root");
+  const daily=document.getElementById("sheet-root");
+  const underlying=daily?.firstElementChild?daily:document.getElementById("app");
   session={hour,minute,trigger,onCommit,underlying,previousInert:underlying?.inert||false};
   if(underlying)underlying.inert=true;
   const wheel=(kind,count,selected)=>'<div class="time-wheel-column"><span class="time-wheel-label" id="'+kind+'-wheel-label">'+esc(getText(kind==="hour"?"hourWheel":"minuteWheel"))+'</span><div class="time-wheel-frame"><div class="time-wheel" data-wheel="'+kind+'" role="listbox" tabindex="0" aria-labelledby="'+kind+'-wheel-label" aria-activedescendant="time-'+kind+'-'+selected+'">'+Array.from({length:count},(_,n)=>'<div class="time-wheel-item'+(n===selected?' selected':'')+'" id="time-'+kind+'-'+n+'" role="option" aria-selected="'+(n===selected)+'" data-value="'+n+'">'+pad(n)+'</div>').join("")+'</div><span class="time-wheel-center" aria-hidden="true"></span></div></div>';
   root.innerHTML='<div class="time-picker-overlay"><section class="time-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="time-picker-title">'+
    '<div class="time-picker-grabber"></div><div class="time-picker-heading"><div><span class="time-picker-kicker">'+esc(getText("timeChoose"))+'</span><h2 id="time-picker-title">'+esc(label)+'</h2></div><button type="button" class="time-picker-close" data-picker-action="cancel" aria-label="'+esc(getText("timeCancel"))+'">×</button></div>'+
    '<div class="time-wheels" dir="ltr">'+wheel("hour",24,hour)+'<span class="time-colon" aria-hidden="true">:</span>'+wheel("minute",60,minute)+'</div>'+
-   '<p class="time-picker-hint">'+esc(getText("pickerHint"))+'</p><div class="time-picker-actions"><button type="button" data-picker-action="clear" class="time-clear">'+esc(getText("timeClear"))+'</button><button type="button" data-picker-action="apply" class="time-apply">'+esc(getText("timeApply"))+'</button></div></section></div>';
+   '<p class="time-picker-hint">'+esc(getText("pickerHint"))+'</p><div class="time-picker-actions"><button type="button" data-picker-action="clear" class="time-clear">'+esc(clearLabel||getText("timeClear"))+'</button><button type="button" data-picker-action="apply" class="time-apply">'+esc(getText("timeApply"))+'</button></div></section></div>';
+  if(!allowClear){root.querySelector('[data-picker-action="clear"]').hidden=true;root.querySelector(".time-picker-actions").style.gridTemplateColumns="1fr";}
   for(const element of root.querySelectorAll(".time-wheel")){
    const kind=element.dataset.wheel;
    element.scrollTop=session[kind]*itemHeight;

@@ -154,7 +154,7 @@ test("new backup contains preserved pay periods and audit", async()=>{
   const policies={"2026-09":{shiftRate:60,payslipCap:777}};
   const audit=sanitizeAudit([{id:"a",at:"2026-09-11T13:15:00.000Z",type:"shift",period:"2026-09",detail:"morning work"}]);
   const backup=makeBackup(r,{language:"fr",shiftRate:40,payslipCap:711},policies,audit);
-  assert.equal(backup.schemaVersion,3);
+  assert.equal(backup.schemaVersion,4);
   const copy=parseBackup(JSON.stringify(backup));
   assert.equal(copy.monthlyPolicies["2026-09"].shiftRate,60);
   assert.equal(copy.audit.length,1);

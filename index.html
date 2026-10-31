@@ -171,12 +171,29 @@
    <span class="field-label" data-text="hourlyRateLabel">Taux horaire</span>
    <span class="money-input-wrap"><input id="hourly-rate-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="10.00"><span aria-hidden="true">€/h</span></span>
   </label>
-  <label class="field">
-   <span class="field-label" data-text="capLabel">Plafond fiche de paie</span>
-   <span class="money-input-wrap"><input id="payslip-cap-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="711.00" required><span aria-hidden="true">€</span></span>
-  </label>
+
  </div>
  <p class="hourly-mode-note" id="hourly-mode-note" data-text="hourlyModeNote" hidden></p>
+ <fieldset class="default-hours-settings" id="default-hours-settings" hidden><legend class="field-label" data-text="defaultTimesTitle">Horaires par défaut</legend>
+ <div class="default-shift-row"><strong data-text="morning">Matin</strong><div class="time-range-row">
+ <button type="button" class="time-value-button has-value" data-default-time data-shift="morning" data-boundary="start" aria-haspopup="dialog"><span class="time-value-label" data-text="timeStart">Début</span><strong dir="ltr">10:00</strong></button>
+ <button type="button" class="time-value-button has-value" data-default-time data-shift="morning" data-boundary="end" aria-haspopup="dialog"><span class="time-value-label" data-text="timeEnd">Fin</span><strong dir="ltr">14:00</strong></button>
+ </div></div>
+ <div class="default-shift-row"><strong data-text="evening">Soir</strong><div class="time-range-row">
+ <button type="button" class="time-value-button has-value" data-default-time data-shift="evening" data-boundary="start" aria-haspopup="dialog"><span class="time-value-label" data-text="timeStart">Début</span><strong dir="ltr">18:00</strong></button>
+ <button type="button" class="time-value-button has-value" data-default-time data-shift="evening" data-boundary="end" aria-haspopup="dialog"><span class="time-value-label" data-text="timeEnd">Fin</span><strong dir="ltr">22:00</strong></button>
+ </div></div>
+ <p class="default-times-note" data-text="defaultTimesHint"></p></fieldset>
+ <fieldset class="payment-mode-field"><legend class="field-label" data-text="paymentModeLabel">Versement</legend>
+ <div class="pay-mode-segment">
+ <label class="pay-mode-option"><input type="radio" name="payment-mode" value="single"><span data-text="paymentSingle">En une fois</span></label>
+ <label class="pay-mode-option"><input type="radio" name="payment-mode" value="split" checked><span data-text="paymentSplit">En deux fois</span></label>
+ </div></fieldset>
+ <p class="payment-mode-note" id="payment-mode-note"></p>
+ <label class="field" id="payslip-cap-field">
+ <span class="field-label" data-text="capLabel">Plafond fiche de paie</span>
+ <span class="money-input-wrap"><input id="payslip-cap-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="711.00" required><span aria-hidden="true">€</span></span>
+ </label>
  <p class="finance-settings-note" data-text="policyNote"></p>
 </section>
 <button class="button-primary wide" type="submit"><span data-text="saveSettings">ذخیرهٔ تنظیمات</span></button>
@@ -192,7 +209,7 @@
  </div>
  <p class="privacy-note" data-text="privacy">اطلاعات فقط در مرورگر همین دستگاه ذخیره می‌شود. برای نگهداری امن، گاهی فایل پشتیبان بگیر.</p>
 </section>
-<div class="settings-fineprint">Planning · v2.0</div>
+<div class="settings-fineprint">Planning · v2.1</div>
 </section>
 </main>
 <nav class="bottom-nav" aria-label="Main navigation">

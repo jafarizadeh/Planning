@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {payPolicy,calculatePayroll,updateStatus,updateTiming,getTiming,timeRangeDetails,timingAnalysis,sanitizeRecords,sanitizeMonthlyPolicies,sanitizeSettings,makeBackup,parseBackup,monthlyHistory,mergeHistory} from './core.mjs';
-const hourly={payMode:'hourly',hourlyRate:10,shiftRate:40,payslipCap:711};
+// Legacy manual-only policies intentionally retain their pre-default-hour behaviour.
+const hourly={payMode:'hourly',hourlyRate:10,shiftRate:40,payslipCap:711,useDefaultTimes:false};
 function add(r,date,shift,start,end,nextDay=false){
  r=updateStatus(r,date,shift,'work');
  return updateTiming(r,date,shift,{start,end,nextDay});
@@ -56,7 +57,7 @@ test('one-minute work rounds cents once across the month, not once per shift',()
  const p=pay(r);assert.equal(p.minutes,3);assert.equal(p.totalCents,50);
  assert.equal(calculatePayroll(r,2026,9,{...hourly,hourlyRate:0}).totalCents,0);
 });
-test('midnight requires an explicit next-day selection',()=>{
+test('legacy manual policy preserves its previous explicit overnight data',()=>{
  let r=add({},'2026-10-05','evening','22:15','02:30');
  assert.equal(pay(r).pendingShifts,1);assert.equal(pay(r).minutes,0);
  r=updateTiming(r,'2026-10-05','evening',{nextDay:true});
@@ -67,7 +68,7 @@ test('equal or 24-hour and reversed ranges are not paid',()=>{
   const r=add({},'2026-10-05','morning','09:00','09:00',nextDay);
   assert.equal(pay(r).pendingShifts,1);assert.equal(pay(r).totalCents,0);
  }
- assert.equal(timeRangeDetails({start:'12:00',end:'11:00'}).state,'invalid');
+ assert.equal(timeRangeDetails({start:'12:00',end:'11:00',nextDay:false}).state,'invalid');
  assert.equal(timeRangeDetails({start:'00:00',end:'23:59'}).minutes,1439);
 });
 test('overlap excludes both offending shifts instead of double paying',()=>{
@@ -96,11 +97,11 @@ test('historic policy stays shift-based when new months become hourly',()=>{
  assert.equal(history[0].pay.mode,'hourly');assert.equal(history[0].pay.totalCents,3500);
  assert.equal(history[1].pay.mode,'shift');assert.equal(history[1].pay.totalCents,4000);
 });
-test('schema 3 export includes complete or partial times and monthly pay modes',()=>{
+test('schema 4 export includes complete or partial times and monthly pay modes',()=>{
  let r=add({},'2026-10-05','morning','09:15','12:45');
  r=updateTiming(r,'2026-10-05','evening',{start:'18:00'});
  const backup=makeBackup(r,hourly,{'2026-10':hourly});
- assert.equal(backup.schemaVersion,3);
+ assert.equal(backup.schemaVersion,4);
  const copy=parseBackup(JSON.stringify(backup));
  assert.deepEqual(copy.records,r);assert.equal(copy.settings.payMode,'hourly');
  assert.equal(copy.monthlyPolicies['2026-10'].hourlyRate,10);

@@ -22,12 +22,6 @@
 .time-value-button:not(.has-value) strong{color:var(--muted)}
 .time-value-button:disabled{opacity:.5;cursor:default}
 .time-value-button:not(:disabled):active{transform:scale(.975);background:#e6eef8}
-.time-value-button:focus-visible,.time-next-day:focus-visible{outline:3px solid #88b5d8;outline-offset:1px}
-.time-next-day{display:flex;align-items:center;gap:6px;min-height:33px;max-width:100%;margin:5px 0 0;padding:3px 2px;color:var(--muted);background:transparent;border:0;font-size:10px;font-weight:650;text-align:start}
-.time-next-day:disabled{opacity:.45;cursor:default}
-.time-next-day-check{width:16px;height:16px;border-radius:5px;display:grid;place-items:center;border:1px solid var(--line);color:transparent;background:var(--surface-soft);font-size:11px;flex:none}
-.time-next-day[aria-pressed="true"] .time-next-day-check{background:#386487;color:#fff;border-color:#386487}
-.time-next-day[aria-pressed="true"]{color:var(--blue)}
 .time-range-status{margin:1px 0 0;font-size:10px;font-weight:600;line-height:1.5;color:var(--muted);min-height:15px}
 .time-range-status.is-warning{color:#997027}
 .time-day-summary{display:flex;align-items:center;justify-content:center;text-align:center;font-size:10.5px;line-height:1.5;color:var(--blue);font-weight:700;padding:8px 6px;margin-top:7px;background:var(--surface-soft);border-radius:10px}
@@ -69,7 +63,6 @@
 html[data-theme="dark"] .pay-incomplete-notice{background:#322b1d;border-color:#665232;color:#efcd8b}
 html[data-theme="dark"] .time-range-status.is-warning{color:#dfbd7f}
 html[data-theme="dark"] .time-value-button:not(:disabled):active{background:#2d4257}
-html[data-theme="dark"] .time-next-day[aria-pressed="true"] .time-next-day-check{background:#7da8cc;color:#0d2438;border-color:#7da8cc}
 html[data-theme="dark"] .time-apply{background:#3c6485;border-color:#3c6485!important}
 html[data-theme="dark"] .time-picker-grabber{background:#5e6e7c}
 html[data-theme="dark"] .time-picker-overlay{background:rgba(0,0,0,.64)}
@@ -81,3 +74,24 @@ html[data-theme="dark"] .time-picker-overlay{background:rgba(0,0,0,.64)}
 /* Use the available phone height so both shifts remain easy to reach. */
 .quick-sheet.is-hourly{max-height:calc(100dvh - 24px);padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
 #settings-form button[type="submit"],.pay-mode-option{scroll-margin-block:110px}
+
+/* Conditional controls must override author display rules (labels, cards and flex rows). */
+[hidden]{display:none!important}
+.finance-settings-card .finance-inputs{grid-template-columns:1fr}
+.default-hours-settings,.payment-mode-field{border:0;min-width:0;padding:0;margin:17px 0}
+.default-hours-settings legend,.payment-mode-field legend{padding:0;margin-bottom:10px}
+.default-shift-row{background:var(--surface-soft);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.default-shift-row>strong{display:block;margin-bottom:9px;font-size:12px;color:var(--ink)}
+.default-shift-row .time-value-button{background:var(--surface)}
+.default-times-note,.payment-mode-note{font-size:11px;line-height:1.65;color:var(--muted);margin:10px 0}
+.payment-mode-field{border-top:1px solid var(--line);padding-top:16px;margin-top:20px}
+.payment-mode-field legend{margin:0;padding-inline-end:8px}
+.time-source-row{display:flex;align-items:center;justify-content:space-between;gap:7px;min-height:31px;margin-top:3px}
+.time-source-label{color:var(--muted);font-size:9.5px;font-weight:600}
+.time-reset{border:0;background:transparent;color:var(--blue);font-size:10px;font-weight:700;padding:7px 2px;min-height:32px;touch-action:manipulation}
+.time-reset:focus-visible,.time-value-button:focus-visible{outline:3px solid #88b5d8;outline-offset:1px}
+.finance-grid.single-payment{grid-template-columns:1fr}
+.finance-grid.single-payment .payslip-card{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:14px;min-height:76px;height:auto;padding:14px 16px}
+.finance-grid.single-payment .payslip-value{margin:0;font-size:23px;line-height:1.2}
+.finance-grid.single-payment .finance-head-text strong{font-size:12px}
+@media(max-width:360px){.default-shift-row{padding:10px}.finance-grid.single-payment .payslip-value{font-size:20px}}

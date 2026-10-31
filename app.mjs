@@ -3,7 +3,8 @@ import {
   dateKey, calendarCells, getStatus, updateStatus, monthStats,
   overallStats, sanitizeRecords, sanitizeSettings, payrollForMonth, makeBackup, parseBackup,
   ARCHIVE_KEY, ARCHIVE_FALLBACK_KEY, periodKey, sanitizeMonthlyPolicies,
-  sanitizeAudit, monthlyHistory, mergeHistory, payPolicy, calculatePayroll, getTiming, updateTiming, timingAnalysis
+  sanitizeAudit, monthlyHistory, mergeHistory, payPolicy, calculatePayroll, getTiming, updateTiming, timingAnalysis,
+  effectiveTiming, resetTiming, sanitizeDefaultTimes, validDefaultSchedule
 } from "./core.mjs";
 import { loadArchiveFromDb, saveArchiveToDb, requestDurableStorage } from "./archive-db.mjs";
 import { setupPickers } from "./ios-picker-v14.mjs";
@@ -159,7 +160,7 @@ function readJSON(key, fallback) {
   catch { return fallback; }
 }
 const rawSnapshot = readJSON(ARCHIVE_KEY,null) || readJSON(ARCHIVE_FALLBACK_KEY,null);
-const localSnapshot = [2,3].includes(rawSnapshot?.schemaVersion) ? rawSnapshot : null;
+const localSnapshot = [2,3,4].includes(rawSnapshot?.schemaVersion) ? rawSnapshot : null;
 let records = sanitizeRecords(localSnapshot ? localSnapshot.records : readJSON(DATA_KEY, {}));
 let settings = sanitizeSettings(localSnapshot ? localSnapshot.settings : readJSON(SETTINGS_KEY, DEFAULT_SETTINGS));
 let monthlyPolicies = sanitizeMonthlyPolicies(localSnapshot?.monthlyPolicies);
@@ -169,15 +170,22 @@ let hadLegacyRecords = readJSON(DATA_KEY,null) !== null;
 let hasLocalSnapshot = !!localSnapshot;
 let hasUnsavedUserEdit = false;
 let storageMode = "unknown";
-function rememberExistingMonths() {
+function rememberExistingMonths(sourceVersion=4) {
+  const now=new Date(),current=periodKey(now.getFullYear(),now.getMonth());
   for(const day of Object.keys(records)) {
-    const key = day.slice(0,7);
-    if(!monthlyPolicies[key]) {
-      monthlyPolicies[key]=payPolicy(settings);
+    const key=day.slice(0,7);
+    if(!monthlyPolicies[key])monthlyPolicies[key]=payPolicy({...settings,
+      useDefaultTimes:sourceVersion<4&&key<current?false:settings.useDefaultTimes});
+  }
+  if(sourceVersion<4){
+    for(const [key,policy] of Object.entries(monthlyPolicies)){
+      // Only the current/future periods adopt automatic default times on upgrade.
+      // Historic manual periods and their totals are deliberately untouched.
+      if(key>=current)monthlyPolicies[key]=payPolicy({...policy,useDefaultTimes:true});
     }
   }
 }
-rememberExistingMonths();
+rememberExistingMonths(localSnapshot?.schemaVersion||2);
 const today = new Date();
 let year = today.getFullYear();
 let month = today.getMonth();
@@ -239,7 +247,7 @@ function escapeHTML(value) {
 function persist(_key, _value) {
   hasUnsavedUserEdit=true;
   const snapshot={
-    schemaVersion:3,savedAt:Math.max(Date.now(),lastSavedAt+1),records,settings,
+    schemaVersion:4,savedAt:Math.max(Date.now(),lastSavedAt+1),records,settings,
     monthlyPolicies:{...monthlyPolicies},audit:[...audit]
   };
   let savedLocally=true;
@@ -264,7 +272,7 @@ function persist(_key, _value) {
 async function initializeArchive() {
   try {
     const stored=await loadArchiveFromDb();
-    const canRestore=stored && [2,3].includes(stored.schemaVersion) && !hasUnsavedUserEdit &&
+    const canRestore=stored && [2,3,4].includes(stored.schemaVersion) && !hasUnsavedUserEdit &&
       ((!hadLegacyRecords && !hasLocalSnapshot) ||
        (hasLocalSnapshot && Number(stored.savedAt)>lastSavedAt));
     if(canRestore){
@@ -272,7 +280,7 @@ async function initializeArchive() {
       settings=sanitizeSettings(stored.settings);
       monthlyPolicies=sanitizeMonthlyPolicies(stored.monthlyPolicies);
       audit=sanitizeAudit(stored.audit);
-      rememberExistingMonths();
+      rememberExistingMonths(stored.schemaVersion);
       persist();
       renderAll();
       showToast(t("archiveRestored"));
@@ -299,9 +307,15 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove("visible"),2500);
 }
-let analyzedRecords=null,cachedTimes={};
+let analyzedRecords=null,cachedTimes={},analyzedPolicySignature="";
+let draftDefaultTimes=sanitizeDefaultTimes(selectedPolicy().defaultTimes);
+let defaultHoursTouched=false;
 function getTimeAnalysis(){
-  if(analyzedRecords!==records){cachedTimes=timingAnalysis(records);analyzedRecords=records;}
+  const signature=JSON.stringify([monthlyPolicies,payPolicy(settings)]);
+  if(analyzedRecords!==records||analyzedPolicySignature!==signature){
+    cachedTimes=timingAnalysis(records,monthlyPolicies,settings);
+    analyzedRecords=records;analyzedPolicySignature=signature;
+  }
   return cachedTimes;
 }
 function durationText(minutes){
@@ -314,15 +328,44 @@ function fillPaySettings(){
   $("hourly-rate-input").value=policy.hourlyRate.toFixed(2);
   $("payslip-cap-input").value=policy.payslipCap.toFixed(2);
   document.querySelector('input[name="pay-mode"][value="'+policy.payMode+'"]').checked=true;
+  document.querySelector('input[name="payment-mode"][value="'+policy.paymentMode+'"]').checked=true;
+  draftDefaultTimes=sanitizeDefaultTimes(policy.defaultTimes);
+  defaultHoursTouched=false;
+  renderDefaultTimeButtons();
   $("pay-settings-period").textContent=t("policyPeriod").replace("{month}",monthLocale());
   updatePayModePreview();
 }
+function renderDefaultTimeButtons(){
+  for(const button of document.querySelectorAll("[data-default-time]")){
+    const shift=button.dataset.shift,boundary=button.dataset.boundary;
+    button.querySelector("strong").textContent=draftDefaultTimes[shift][boundary];
+    button.setAttribute("aria-label",t("defaultTimesTitle")+" · "+shiftName(shift)+" · "+
+      t(boundary==="start"?"timeStart":"timeEnd")+": "+draftDefaultTimes[shift][boundary]);
+  }
+}
 function updatePayModePreview(){
   const hourly=document.querySelector('input[name="pay-mode"]:checked')?.value==="hourly";
+  const split=document.querySelector('input[name="payment-mode"]:checked')?.value!=="single";
   $("shift-rate-field").hidden=hourly;$("hourly-rate-field").hidden=!hourly;
   $("hourly-mode-note").hidden=!hourly;
-  $("shift-rate-input").required=!hourly;$("hourly-rate-input").required=hourly;
+  $("default-hours-settings").hidden=!hourly;
+  $("shift-rate-input").required=!hourly;$("shift-rate-input").disabled=hourly;
+  $("hourly-rate-input").required=hourly;$("hourly-rate-input").disabled=!hourly;
+  $("payslip-cap-field").hidden=!split;
+  $("payslip-cap-input").required=split;$("payslip-cap-input").disabled=!split;
+  $("payment-mode-note").textContent=t(split?"splitPaymentNote":"singlePaymentNote");
+  document.querySelector(".default-times-note").textContent=t(!selectedPolicy().useDefaultTimes&&!defaultHoursTouched?"legacyDefaultsNote":"defaultTimesHint");
+  for(const button of document.querySelectorAll("[data-default-time]"))button.disabled=!hourly;
 }
+function openDefaultTime(button){
+  if(button.disabled)return;
+  const shift=button.dataset.shift,boundary=button.dataset.boundary;
+  timePicker.open({value:draftDefaultTimes[shift][boundary],trigger:button,allowClear:false,
+    label:shiftName(shift)+" · "+t(boundary==="start"?"timeStart":"timeEnd"),
+    onCommit:value=>{if(value){draftDefaultTimes[shift][boundary]=value;defaultHoursTouched=true;renderDefaultTimeButtons();updatePayModePreview();}}
+  });
+}
+
 function decorateCalendarTimes(){
   const hourly=selectedPolicy().payMode==="hourly";
   const analysis=getTimeAnalysis();
@@ -345,13 +388,13 @@ function updateTimeControls(){
     section.hidden=!hourly;
     if(!hourly)continue;
     const status=getStatus(records,chosenDate,shift),worked=status==="work";
-    const timing=getTiming(records,chosenDate,shift),detail=analysis[chosenDate+":"+shift]||{state:"missing",minutes:0};
+    const timing=effectiveTiming(records,chosenDate,shift,selectedPolicy()),ownTiming=getTiming(records,chosenDate,shift),detail=analysis[chosenDate+":"+shift]||{state:"missing",minutes:0};
     if(!section.firstElementChild){
       section.innerHTML='<div class="time-range-row">'+["start","end"].map(boundary=>
         '<button type="button" class="time-value-button" data-action="pick-time" data-shift="'+shift+'" data-boundary="'+boundary+'" aria-haspopup="dialog">'+
         '<span class="time-value-label">'+escapeHTML(t(boundary==="start"?"timeStart":"timeEnd"))+'</span><strong dir="ltr">--:--</strong></button>').join("")+
-        '</div><button type="button" class="time-next-day" data-action="toggle-next-day" data-shift="'+shift+'" aria-pressed="false">'+
-        '<span class="time-next-day-check" aria-hidden="true">✓</span>'+escapeHTML(t("timeNextDay"))+'</button>'+
+        '</div><div class="time-source-row"><span class="time-source-label"></span>'+
+        '<button type="button" class="time-reset" data-action="reset-time" data-shift="'+shift+'">'+escapeHTML(t("useDefaultTimes"))+'</button></div>'+
         '<p class="time-range-status" aria-live="polite"></p>';
     }
     for(const boundary of ["start","end"]){
@@ -361,13 +404,15 @@ function updateTimeControls(){
       button.classList.toggle("has-value",!!timing[boundary]);
       button.setAttribute("aria-label",shiftName(shift)+" — "+t(boundary==="start"?"timeStart":"timeEnd")+": "+(timing[boundary]||t("timeChoose")));
     }
-    const toggle=section.querySelector(".time-next-day");
-    toggle.disabled=!worked;toggle.setAttribute("aria-pressed",String(timing.nextDay));
+    const custom=!!(ownTiming.start||ownTiming.end);
+    section.querySelector(".time-source-label").textContent=custom?t("customTimes"):selectedPolicy().useDefaultTimes?t("defaultTimesTag"):t("timeMissing");
+    const reset=section.querySelector(".time-reset");
+    reset.hidden=!custom||!selectedPolicy().useDefaultTimes;reset.disabled=!worked;
     const state=section.querySelector(".time-range-status");
     const warning=worked&&detail.state!=="ready";
     state.classList.toggle("is-warning",warning);
     state.textContent=!worked?t("timeNeedWork"):detail.state==="ready"?
-      t("timeDuration")+" · "+durationText(detail.minutes):
+      t("timeDuration")+" · "+durationText(detail.minutes)+(timing.nextDay?" · "+t("overnightTag"):""):
       t(detail.state==="invalid"?"timeInvalid":detail.state==="overlap"?"timeOverlap":"timeMissing");
     if(worked&&detail.state==="ready")dayMinutes+=detail.minutes;
     if(warning)pending++;
@@ -380,19 +425,31 @@ function updateTimeControls(){
 function openTimeForShift(shift,boundary,trigger){
   if(!chosenDate||selectedPolicy().payMode!=="hourly"||getStatus(records,chosenDate,shift)!=="work")return;
   const key=chosenDate;
-  timePicker.open({value:getTiming(records,key,shift)[boundary],trigger,
+  timePicker.open({value:effectiveTiming(records,key,shift,selectedPolicy())[boundary],trigger,
+    clearLabel:t(selectedPolicy().useDefaultTimes?"useDefaultTimes":"timeClear"),
     label:shiftName(shift)+" · "+t(boundary==="start"?"timeStart":"timeEnd"),
+    // Reset only this boundary; never erase a custom end when resetting a start.
     onCommit:value=>commitTime(key,shift,{[boundary]:value})});
 }
 function commitTime(key,shift,patch){
   if(!key||key!==chosenDate||selectedPolicy().payMode!=="hourly"||getStatus(records,key,shift)!=="work")return;
   recordedMonthPolicy(key.slice(0,7));
   const old=getTiming(records,key,shift);
-  records=updateTiming(records,key,shift,patch);
+  const effective={...effectiveTiming(records,key,shift,selectedPolicy()),...patch};
+  const nextDay=!!(effective.start&&effective.end&&effective.end<effective.start);
+  records=updateTiming(records,key,shift,{...patch,nextDay});
   auditChange("shift",key.slice(0,7),key+" "+shift+" times "+JSON.stringify(old)+" > "+JSON.stringify(getTiming(records,key,shift)));
   envelopeOpen=false;
   updateSheetControls();refreshShiftSummary();
   persist(DATA_KEY,records);
+}
+function restoreDefaultShift(key,shift){
+  if(!key||key!==chosenDate||selectedPolicy().payMode!=="hourly"||getStatus(records,key,shift)!=="work")return;
+  if(!selectedPolicy().useDefaultTimes)return;
+  const before=getTiming(records,key,shift);
+  records=resetTiming(records,key,shift);
+  auditChange("shift",key.slice(0,7),key+" "+shift+" restore defaults; previous "+JSON.stringify(before));
+  envelopeOpen=false;updateSheetControls();refreshShiftSummary();persist(DATA_KEY,records);
 }
 function renderTranslations() {
   document.documentElement.lang = settings.language;
@@ -434,12 +491,16 @@ function renderPayroll(stats) {
     .replace("{duration}",durationText(pay.minutes)).replace("{rate}",euro(pay.rateCents));
   $("pay-incomplete-notice").hidden=!hourly||pay.pendingShifts===0;
   $("pay-incomplete-notice").textContent=t("pendingPay").replace("{count}",num(pay.pendingShifts));
-  const available = pay.envelopeCents > 0;
+  const split=pay.paymentMode!=="single";
+  document.querySelector(".finance-grid").classList.toggle("single-payment",!split);
+  document.querySelector(".payslip-footer").hidden=!split;
+  $("envelope-card").hidden=!split;
+  const available=split&&pay.envelopeCents>0;
   if (!available) envelopeOpen = false;
   $("finance-period").textContent = monthLocale();
   $("salary-total").textContent = euro(pay.totalCents);
   $("payslip-amount").textContent = euro(pay.payslipCents);
-  $("payslip-cap").textContent = euro(pay.capCents);
+  $("payslip-cap").textContent = split?euro(pay.capCents):"";
   $("payslip-meter-fill").style.width = pay.progressPercent + "%";
   $("payslip-meter").setAttribute("aria-valuenow", String(Math.round(pay.progressPercent)));
   $("payslip-meter").setAttribute("aria-valuetext", euro(pay.payslipCents) + " / " + euro(pay.capCents));
@@ -470,8 +531,8 @@ function renderHistory() {
       .format(new Date(entry.year,entry.month-1,15));
     const details=num(entry.stats.halfDays)+" "+t("daysUnit")+" · "+
       (entry.pay.mode==="hourly"?durationText(entry.pay.minutes)+" · ":"")+
-      t("payslipTitle")+" "+euro(entry.pay.payslipCents)+" · "+
-      t("envelopeTitle")+" "+euro(entry.pay.envelopeCents)+
+      t("payslipTitle")+" "+euro(entry.pay.payslipCents)+
+      (entry.pay.paymentMode==="single"?"":" · "+t("envelopeTitle")+" "+euro(entry.pay.envelopeCents))+
       (entry.pay.pendingShifts?" · "+t("pendingPay").replace("{count}",num(entry.pay.pendingShifts)):"");
     return '<button type="button" class="history-month '+
       (entry.key===periodKey(year,month)?"is-current":"")+
@@ -799,9 +860,8 @@ $("sheet-root").addEventListener("click",event=>{
   if(action==="pick-time"){
     openTimeForShift(button.dataset.shift,button.dataset.boundary,button);return;
   }
-  if(action==="toggle-next-day"){
-    const shift=button.dataset.shift;
-    commitTime(chosenDate,shift,{nextDay:!getTiming(records,chosenDate,shift).nextDay});return;
+  if(action==="reset-time"){
+    restoreDefaultShift(chosenDate,button.dataset.shift);return;
   }
   if(action==="set-shift"){
     applyShiftBatch(chosenDate,{[button.dataset.shift]:button.dataset.state});
@@ -850,11 +910,17 @@ $("settings-form").addEventListener("submit",event=>{
   const selectedMonth=periodKey(year,month),oldPolicy=payPolicy(selectedPolicy());
   const updatedPolicy=payPolicy({
     payMode:document.querySelector('input[name="pay-mode"]:checked')?.value||oldPolicy.payMode,
-    shiftRate:$("shift-rate-input").value,
-    hourlyRate:$("hourly-rate-input").value,
-    payslipCap:$("payslip-cap-input").value
+    shiftRate:$("shift-rate-input").disabled?oldPolicy.shiftRate:$("shift-rate-input").value,
+    hourlyRate:$("hourly-rate-input").disabled?oldPolicy.hourlyRate:$("hourly-rate-input").value,
+    paymentMode:document.querySelector('input[name="payment-mode"]:checked')?.value||oldPolicy.paymentMode,
+    payslipCap:$("payslip-cap-input").disabled?oldPolicy.payslipCap:$("payslip-cap-input").value,
+    defaultTimes:draftDefaultTimes,
+    useDefaultTimes:oldPolicy.useDefaultTimes||defaultHoursTouched
   });
-  const changedMoney=Object.keys(updatedPolicy).some(key=>updatedPolicy[key]!==oldPolicy[key]);
+  if(updatedPolicy.payMode==="hourly"&&!validDefaultSchedule(draftDefaultTimes)){
+    showToast(t("invalidDefaultSchedule"));return;
+  }
+  const changedMoney=JSON.stringify(updatedPolicy)!==JSON.stringify(oldPolicy);
   if(updatedPolicy.payMode!==oldPolicy.payMode&&monthStats(records,year,month).work>0){
     if(!confirm(t("modeConfirm").replace("{month}",monthLocale())))return;
   }
@@ -875,8 +941,11 @@ $("settings-form").addEventListener("submit",event=>{
   envelopeOpen=false;
   persist(SETTINGS_KEY,settings);renderAll();showToast(t("settingsSaved"));
 });
-document.querySelectorAll('input[name="pay-mode"]').forEach(input=>{
-  input.addEventListener("change",updatePayModePreview);
+document.querySelectorAll('input[name="pay-mode"],input[name="payment-mode"]').forEach(input=>{
+  input.addEventListener("change",()=>{if(input.name==="pay-mode")defaultHoursTouched=true;updatePayModePreview();});
+});
+document.querySelectorAll('[data-default-time]').forEach(button=>{
+  button.addEventListener("click",()=>openDefaultTime(button));
 });
 
 $("export-backup").addEventListener("click",()=>{
@@ -912,7 +981,7 @@ $("backup-file").addEventListener("change",async event=>{
     const merged=mergeHistory(records,backup.records,monthlyPolicies,incomingPolicies);
     records=merged.records;
     monthlyPolicies=merged.monthlyPolicies;
-    if(wasEmpty) settings=backup.settings;
+    if(wasEmpty) settings=sanitizeSettings({...backup.settings,useDefaultTimes:true});
     audit=sanitizeAudit([...audit,...backup.audit]);
     auditChange("import",periodKey(year,month),
       "Backup merged; conflicts kept current: "+merged.conflicts);
@@ -929,7 +998,7 @@ window.addEventListener("storage",event=>{
   if(event.key!==ARCHIVE_KEY || !event.newValue) return;
   let updated;
   try { updated=JSON.parse(event.newValue); } catch { return; }
-  if(!updated || ![2,3].includes(updated.schemaVersion) || Number(updated.savedAt)<=lastSavedAt) return;
+  if(!updated || ![2,3,4].includes(updated.schemaVersion) || Number(updated.savedAt)<=lastSavedAt) return;
   records=sanitizeRecords(updated.records);
   settings=sanitizeSettings(updated.settings);
   monthlyPolicies=sanitizeMonthlyPolicies(updated.monthlyPolicies);

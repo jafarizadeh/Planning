@@ -1,5 +1,11 @@
 export const SHIFTS = ["morning", "evening"];
-export const DEFAULT_SETTINGS = { language: "fr", theme: "light", weekStart: 1, morningName: "", eveningName: "", shiftRate: 40, hourlyRate: 10, payMode: "shift", payslipCap: 711 };
+export const DEFAULT_TIMES = Object.freeze({
+ morning:Object.freeze({start:"10:00",end:"14:00"}),
+ evening:Object.freeze({start:"18:00",end:"22:00"})
+});
+export const DEFAULT_SETTINGS = { language:"fr",theme:"light",weekStart:1,morningName:"",eveningName:"",
+ shiftRate:40,hourlyRate:10,payMode:"shift",payslipCap:711,paymentMode:"split",
+ defaultTimes:DEFAULT_TIMES,useDefaultTimes:true };
 export const STATUS = { UNSET: "unset", WORK: "work", OFF: "off" };
 export const DATA_KEY = "shift-planner-records-v1";
 export const SETTINGS_KEY = "shift-planner-settings-v1";
@@ -44,7 +50,10 @@ export function sanitizeSettings(data) {
     shiftRate: validMoney(x.shiftRate, DEFAULT_SETTINGS.shiftRate),
     hourlyRate: validMoney(x.hourlyRate, DEFAULT_SETTINGS.hourlyRate),
     payMode: x.payMode === "hourly" ? "hourly" : "shift",
-    payslipCap: validMoney(x.payslipCap, DEFAULT_SETTINGS.payslipCap)
+    payslipCap: validMoney(x.payslipCap, DEFAULT_SETTINGS.payslipCap),
+    paymentMode:x.paymentMode==="single"?"single":"split",
+    defaultTimes:sanitizeDefaultTimes(x.defaultTimes),
+    useDefaultTimes:x.useDefaultTimes!==false
   };
 }
 export function getStatus(records, key, shift) {
@@ -87,22 +96,25 @@ export function overallStats(records) {
   result.halfDays=result.work/2;
   return result;
 }
+export function splitPayment(totalCents, inputSettings=DEFAULT_SETTINGS){
+ const settings=sanitizeSettings(inputSettings);
+ const single=settings.paymentMode==="single";
+ const capCents=single?null:Math.round(settings.payslipCap*100);
+ const payslipCents=single?totalCents:Math.min(totalCents,capCents);
+ const envelopeCents=single?0:totalCents-payslipCents;
+ const progressPercent=single?0:capCents===0?(totalCents>0?100:0):Math.min(100,payslipCents/capCents*100);
+ return {paymentMode:settings.paymentMode,capCents,totalCents,payslipCents,envelopeCents,progressPercent};
+}
 export function payrollForMonth(workedShifts, inputSettings = DEFAULT_SETTINGS) {
-  const settings = sanitizeSettings(inputSettings);
-  const shifts = Number.isSafeInteger(workedShifts) && workedShifts >= 0 ? workedShifts : 0;
-  const rateCents = Math.round(settings.shiftRate * 100);
-  const capCents = Math.round(settings.payslipCap * 100);
-  const totalCents = shifts * rateCents;
-  const payslipCents = Math.min(totalCents, capCents);
-  const envelopeCents = totalCents - payslipCents;
-  const progressPercent = capCents === 0 ? (totalCents > 0 ? 100 : 0) :
-    Math.min(100, payslipCents / capCents * 100);
-  return { shifts, rateCents, capCents, totalCents, payslipCents, envelopeCents, progressPercent };
+ const settings=sanitizeSettings(inputSettings);
+ const shifts=Number.isSafeInteger(workedShifts)&&workedShifts>=0?workedShifts:0;
+ const rateCents=Math.round(settings.shiftRate*100);
+ return {shifts,rateCents,...splitPayment(shifts*rateCents,settings)};
 }
 
 export function makeBackup(records,settings,monthlyPolicies={},audit=[]) {
   return {
-    app:"ShiftPlanner", schemaVersion:3, exportedAt:new Date().toISOString(),
+    app:"ShiftPlanner", schemaVersion:4, exportedAt:new Date().toISOString(),
     records:sanitizeRecords(records), settings:sanitizeSettings(settings),
     monthlyPolicies:sanitizeMonthlyPolicies(monthlyPolicies), audit:sanitizeAudit(audit)
   };
@@ -110,14 +122,14 @@ export function makeBackup(records,settings,monthlyPolicies={},audit=[]) {
 export function parseBackup(text) {
   let data;
   try { data=JSON.parse(text); } catch { throw Error("not-json"); }
-  if (!data || data.app!=="ShiftPlanner" || ![1,2,3].includes(data.schemaVersion) ||
+  if (!data || data.app!=="ShiftPlanner" || ![1,2,3,4].includes(data.schemaVersion) ||
       !data.records || typeof data.records!=="object" || Array.isArray(data.records)) {
     throw Error("not-backup");
   }
   for(const [key, entry] of Object.entries(data.records)){
     if(!validDateKey(key) || !entry || typeof entry!=="object" || Array.isArray(entry)) throw Error("not-backup");
     for(const field of Object.keys(entry)){
-      if(field==="timings" && data.schemaVersion===3){
+      if(field==="timings" && data.schemaVersion>=3){
         if(!validTimingMap(entry.timings)) throw Error("not-backup");
       }else if(!SHIFTS.includes(field)||!validStates.has(entry[field])) throw Error("not-backup");
     }
@@ -127,7 +139,7 @@ export function parseBackup(text) {
       Array.isArray(data.monthlyPolicies) || !Array.isArray(data.audit))) throw Error("not-backup");
   return {
     records:sanitizeRecords(data.records),
-    settings:sanitizeSettings(data.settings),
+    settings:sanitizeSettings({...data.settings,useDefaultTimes:data.schemaVersion<4&&data.settings?.payMode==="hourly"?false:data.settings?.useDefaultTimes}),
     monthlyPolicies:sanitizeMonthlyPolicies(data.monthlyPolicies),
     audit:sanitizeAudit(data.audit)
   };
@@ -149,7 +161,9 @@ export function sanitizeMonthlyPolicies(raw) {
     if(!validPeriodKey(key) || !value || typeof value !== "object" || Array.isArray(value)) continue;
     if(!Number.isFinite(Number(value.shiftRate)) || !Number.isFinite(Number(value.payslipCap)) ||
        Number(value.shiftRate)<0 || Number(value.payslipCap)<0) continue;
-    const normalized = sanitizeSettings(value);
+    // Older policies did not have fallback hours. Preserve their historical totals.
+    const normalized=sanitizeSettings({...value,useDefaultTimes:
+      typeof value.useDefaultTimes==="boolean"?value.useDefaultTimes:!!value.defaultTimes});
     result[key] = payPolicy(normalized);
   }
   return result;
@@ -161,7 +175,7 @@ export function monthlyHistory(records,policies={},settings=DEFAULT_SETTINGS) {
     ...Object.keys(r).map(key=>key.slice(0,7)),
     ...Object.keys(safePolicies)
   ])].sort().reverse();
-  const analysis=timingAnalysis(r);
+  const analysis=timingAnalysis(r,safePolicies,settings);
   return months.map(key=>{
     const [year,month] = key.split("-").map(Number);
     const stats = monthStats(r,year,month-1);
@@ -226,10 +240,46 @@ export function mergeHistory(existingRecords,importedRecords,existingPolicies={}
 // Hourly pay uses integer minutes and integer cents; round once per month.
 export function payPolicy(value=DEFAULT_SETTINGS){
  const clean=sanitizeSettings(value);
- return {payMode:clean.payMode,shiftRate:clean.shiftRate,hourlyRate:clean.hourlyRate,payslipCap:clean.payslipCap};
+ return {payMode:clean.payMode,shiftRate:clean.shiftRate,hourlyRate:clean.hourlyRate,
+  payslipCap:clean.payslipCap,paymentMode:clean.paymentMode,
+  defaultTimes:sanitizeDefaultTimes(clean.defaultTimes),useDefaultTimes:clean.useDefaultTimes};
 }
 export function validClock(value){
  return typeof value==="string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+export function sanitizeDefaultTimes(value){
+ const clean={};
+ for(const shift of SHIFTS){
+  const range=value?.[shift];
+  clean[shift]={start:validClock(range?.start)?range.start:DEFAULT_TIMES[shift].start,
+   end:validClock(range?.end)?range.end:DEFAULT_TIMES[shift].end};
+ }
+ return clean;
+}
+export function validDefaultSchedule(value){
+ if(!value||SHIFTS.some(shift=>!validClock(value[shift]?.start)||!validClock(value[shift]?.end)))return false;
+ const a=timeRangeDetails(value.morning),b=timeRangeDetails(value.evening);
+ if(a.state!=="ready"||b.state!=="ready")return false;
+ // A recurring default schedule cannot overlap itself on neighbouring dates.
+ return [-1440,0,1440].every(offset=>a.end<=b.start+offset||b.end+offset<=a.start);
+}
+export function effectiveTiming(records,key,shift,inputPolicy=DEFAULT_SETTINGS){
+ const policy=payPolicy(inputPolicy),own=getTiming(records,key,shift);
+ const fallback=policy.useDefaultTimes?policy.defaultTimes[shift]:{start:"",end:""};
+ const start=own.start||fallback?.start||"",end=own.end||fallback?.end||"";
+ // New default-aware months infer overnight. Old manual-only months keep their
+ // explicit overnight bit so updating the app cannot rewrite historical wages.
+ const nextDay=policy.useDefaultTimes?!!(start&&end&&end<start):own.nextDay;
+ return {start,end,nextDay};
+}
+export function resetTiming(records,key,shift){
+ if(!validDateKey(key)||!SHIFTS.includes(shift))throw Error("invalid-time");
+ const entry={...(records[key]||{})},timings={...(entry.timings||{})};
+ delete timings[shift];
+ if(Object.keys(timings).length)entry.timings=timings;else delete entry.timings;
+ const result={...records};
+ if(Object.keys(entry).length)result[key]=entry;else delete result[key];
+ return result;
 }
 function validTimingMap(value){
  if(!value||typeof value!=="object"||Array.isArray(value))return false;
@@ -272,24 +322,26 @@ export function updateTiming(records,key,shift,patch){
 export function timeRangeDetails(range){
  if(!validClock(range?.start)||!validClock(range?.end))return {state:"missing",minutes:0};
  const parse=v=>Number(v.slice(0,2))*60+Number(v.slice(3));
- const start=parse(range.start),end=parse(range.end)+(range.nextDay===true?1440:0);
+ const overnight=typeof range.nextDay==="boolean"?range.nextDay:range.end<range.start;
+ const start=parse(range.start),end=parse(range.end)+(overnight?1440:0);
  const minutes=end-start;
- // Overnight is explicit. Equal times must never accidentally create a 24-hour shift.
+ // Infer overnight when no legacy flag exists. Equal times never mean 24 hours.
  if(minutes<=0||minutes>=1440)return {state:"invalid",minutes:0,start,end};
  return {state:"ready",minutes,start,end};
 }
-export function timingAnalysis(records){
+export function timingAnalysis(records,policies=null,fallbackPolicy=DEFAULT_SETTINGS){
  const details={},intervals=[];
  for(const [key,entry] of Object.entries(records)){
   if(!validDateKey(key))continue;
   const [y,m,d]=key.split("-").map(Number);
   const base=Date.UTC(y,m-1,d)/60000;
+  const policy=policies===null?null:payPolicy(policies[key.slice(0,7)]||fallbackPolicy);
   for(const shift of SHIFTS){
    const id=key+":"+shift;
-   if(getStatus(records,key,shift)!=="work"){
+   if(getStatus(records,key,shift)!=="work"||(policy&&policy.payMode!=="hourly")){
     details[id]={state:"inactive",minutes:0};continue;
    }
-   const detail=timeRangeDetails(entry.timings?.[shift]);
+   const detail=timeRangeDetails(policy?effectiveTiming(records,key,shift,policy):entry.timings?.[shift]);
    details[id]=detail;
    if(detail.state==="ready")intervals.push({id,start:base+detail.start,end:base+detail.end});
   }
@@ -310,7 +362,7 @@ export function timingAnalysis(records){
 export function calculatePayroll(records,year,month,inputPolicy=DEFAULT_SETTINGS,analysis=null){
  const policy=payPolicy(inputPolicy),stats=monthStats(records,year,month);
  if(policy.payMode==="shift")return {...payrollForMonth(stats.work,policy),mode:"shift",minutes:0,paidShifts:stats.work,pendingShifts:0};
- const details=analysis||timingAnalysis(records);
+ const details=analysis||timingAnalysis(records,{[periodKey(year,month)]:policy},policy);
  let minutes=0,paidShifts=0,pendingShifts=0;
  const prefix=periodKey(year,month);
  for(const [key,entry] of Object.entries(records)){
@@ -322,9 +374,7 @@ export function calculatePayroll(records,year,month,inputPolicy=DEFAULT_SETTINGS
    else pendingShifts++;
   }
  }
- const rateCents=Math.round(policy.hourlyRate*100),capCents=Math.round(policy.payslipCap*100);
+ const rateCents=Math.round(policy.hourlyRate*100);
  const totalCents=Math.round(minutes*rateCents/60);
- const payslipCents=Math.min(capCents,totalCents),envelopeCents=totalCents-payslipCents;
- const progressPercent=capCents===0?(totalCents>0?100:0):Math.min(100,payslipCents/capCents*100);
- return {mode:"hourly",shifts:stats.work,minutes,paidShifts,pendingShifts,rateCents,capCents,totalCents,payslipCents,envelopeCents,progressPercent};
+ return {mode:"hourly",shifts:stats.work,minutes,paidShifts,pendingShifts,rateCents,...splitPayment(totalCents,policy)};
 }

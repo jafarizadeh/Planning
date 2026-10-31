@@ -3,7 +3,7 @@
 A standalone, mobile-first Progressive Web App for morning/evening shifts and pay.
 Branch: `app/personal`. The employer application is separate on `app/equipe`.
 
-## Development: pay modes (v2.0)
+## Development: default hours and payment modes (v2.1)
 
 Settings → **Rémunération** offers two modes:
 
@@ -20,20 +20,39 @@ its three status buttons. Tap either time to open a 24-hour hour/minute wheel;
 no text keyboard is needed. Select the time and tap **Valider**. Time edits are
 saved automatically. Controls are enabled only for a **Travaillé** shift.
 
+### Default hours and personal overrides
+
+In hourly mode, **Horaires par défaut** is configurable in Settings using the
+same time wheels. Initial values are **10:00–14:00** for Matin and
+**18:00–22:00** for Soir. These are fallback times, not automatic work records:
+unrecorded and non-worked shifts still earn nothing.
+
+Each explicitly entered start/end in the calendar takes priority over the
+corresponding monthly default. Changing default hours never overwrites personal
+entries. The **Par défaut** action in a time picker resets only that boundary;
+the per-shift reset restores both defaults. Switching mode or work status does
+not erase custom times.
+
 Work duration and that day's total hours are displayed. The monthly sum uses
-only worked shifts with complete, valid times. Missing or invalid ranges are
-marked as incomplete and the salary is explicitly labelled provisional.
+worked shifts with valid effective times (personal entries first, then defaults).
+Invalid or overlapping ranges remain excluded and visibly provisional.
 For example, 09:15–12:45 at €10/hour means 210 minutes and €35.
 
 ### Calculation rules
 
 - Minutes are counted exactly. Hourly rates are stored in cents; the aggregate
   monthly amount is rounded to the nearest cent once, not per shift.
-- The existing payslip/envelope split is unchanged. At €800 total with a €711
-  cap, the payslip is €711 and the envelope is €89.
+- **Versement → En une fois:** all wages go into the single payment/payslip,
+  without a cap. The envelope, cap field and progress meter are hidden.
+- **Versement → En deux fois:** the configured cap applies; excess goes into
+  the envelope. At €800 total and a €711 cap, this remains €711 + €89.
+- Pay method and payment split are independent. Each inactive rate/cap field
+  is both hidden and disabled; its saved value is retained for switching back.
 - Each worked shift still counts as half a day in the day counters.
-- For overnight work, explicitly choose **Fin le lendemain**. A range must be
-  positive and less than 24 hours. Equal or reversed times are not paid.
+- There is no next-day checkbox. For default-aware periods, an end earlier
+  than the start automatically crosses midnight; a small +1 day indicator
+  clarifies it. Equal times are invalid, not a 24-hour shift. Legacy manual
+  months retain their stored overnight semantics unless explicitly edited.
 - Overlapping worked time ranges are flagged and excluded until corrected.
 - A shift that crosses midnight is assigned to its start date/month.
 - Durations are entered wall-clock hours; the app does not infer unpaid breaks,
@@ -43,10 +62,12 @@ For example, 09:15–12:45 at €10/hour means 210 minutes and €35.
 
 ### History and storage
 
-Data remains on this device in localStorage and IndexedDB. Archive schema 3
-adds timings and monthly pay modes; v1/v2 backups still import. Existing
-shift-only records migrate without changing their amounts. Exports include
-the mode, both rates, monthly policies, and times. Import keeps current records
+Data remains on this device in localStorage and IndexedDB. Archive schema 4
+adds default schedules and single/split payment; v1/v2/v3 backups still import.
+Past manual-only hourly policies retain their original incomplete-time behaviour
+so an update or unrelated settings change cannot silently recalculate history.
+Current/future periods adopt default hours; personal times remain untouched.
+Exports include both modes, both rates, monthly default schedules and overrides. Import keeps current records
 and current monthly policies on conflicts, rather than overwriting them.
 
 Keep a separate exported backup before changing devices or deleting browser
@@ -64,7 +85,7 @@ Chrome window on Ubuntu, using the app's dedicated local profile.
 ## Tests
 
 ```sh
-node --test tests.mjs hourly-tests.mjs
+node --test tests.mjs hourly-tests.mjs default-pay-tests.mjs
 ```
 
 Optional mobile browser regression (Puppeteer is needed):
@@ -72,6 +93,7 @@ Optional mobile browser regression (Puppeteer is needed):
 ```sh
 # Serve this directory separately before running the browser tests.
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node hourly-browser-test.cjs
+PLANNING_TEST_URL=http://127.0.0.1:8080/ node default-pay-browser-test.cjs
 ```
 
 Set `PUPPETEER_MODULE` to an installed Puppeteer module when it is outside the
