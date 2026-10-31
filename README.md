@@ -1,28 +1,32 @@
-# Planning — app source archive
+# Planning — personal app
 
-Two standalone Progressive Web Apps, with **separate branches** and distinct
-user-data stores.
+Mobile-first PWA for recording morning/evening shifts and calculating salary,
+payslip and envelope excess.
 
-| Branch | Application | Public deployment |
-| --- | --- | --- |
-| [app/personal](../../tree/app/personal) | Planning — personal shift calendar | https://planning-xi-ruby.vercel.app |
-| [app/equipe](../../tree/app/equipe) | Planning Équipe — employer scheduling & payroll | https://planning-equipe-peach.vercel.app |
+**Production:** https://planning-xi-ruby.vercel.app
 
-**Select an application branch** to find that app's complete deployable root.
-The \`main\` branch is only this directory/index. Do not merge the app branches
-into \`main\` or into each other.
+## Run
 
-## Privacy
+From this directory, serve files with any static HTTP server, for example:
 
-No work records, real employee photos, browser profiles, exports or backups are
-part of this source archive. Both apps store their data locally on each device,
-not in GitHub.
+\`\`\`sh
+python3 -m http.server 8080
+\`\`\`
 
-This repository is **public**, so do not commit credentials or private records.
-Keep user-data backups outside GitHub.
+Open http://localhost:8080 in a browser. The included \`run.py\` is an
+Ubuntu-focused desktop launcher.
 
-## Deployments
+## Test
 
-These Git branches are independent of the existing Vercel deployments.
-Pushing source here does **not** automatically update Vercel unless each
-deployment is separately configured to track its correct branch.
+\`\`\`sh
+node --test tests.mjs
+\`\`\`
+
+## Local data and privacy
+
+This app stores records and payroll history in the phone/browser's local
+storage and IndexedDB; it does not synchronize data to GitHub or Vercel.
+Export a backup in Settings and store it separately. Never commit personal
+work records or exported backups to this repository.
+
+Default UI language is French. The two apps are developed independently.

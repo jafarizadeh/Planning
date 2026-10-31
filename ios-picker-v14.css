@@ -1,0 +1,194 @@
+/* iOS-inspired custom pickers: minimal controls + accessible selection sheet. */
+.picker-field { margin-bottom: 17px; }
+.picker-field .field-label { font-size: 11.5px; letter-spacing: -.01em; margin-bottom: 8px; }
+.picker-trigger-wrap { position: relative; width: 100%; }
+.picker-native {
+  position: absolute !important; width: 1px !important; height: 1px !important;
+  opacity: 0; pointer-events: none; margin: 0; padding: 0;
+  clip-path: inset(100%); overflow: hidden;
+}
+.picker-trigger {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 63px; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 15px;
+  color: var(--ink); text-align: start; font: inherit;
+  box-shadow: 0 2px 6px rgba(23,46,72,.035);
+  transition: border-color .18s, box-shadow .18s, background .18s, transform .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.picker-trigger:hover { border-color: #bdcddc; background: var(--surface-soft); }
+.picker-trigger:active { transform: scale(.987); }
+.picker-trigger[aria-expanded="true"] {
+  border-color: #7faacb;
+  box-shadow: 0 0 0 3px rgba(92,145,193,.11);
+}
+.picker-trigger:focus-visible { outline: 3px solid #75a8d3; outline-offset: 2px; }
+.picker-trigger-symbol {
+  flex: none; display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 11px;
+  background: #eef4fa; color: #4d7ca4;
+}
+.picker-trigger-symbol svg { width: 20px; height: 20px; }
+.picker-trigger-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.picker-trigger-copy strong {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13.5px; line-height: 1.3; font-weight: 720; color: var(--ink);
+}
+.picker-trigger-copy small {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 10px; font-weight: 520; line-height: 1.45; color: var(--muted);
+}
+.picker-trigger-arrow {
+  flex: none; width: 27px; height: 27px; display: grid; place-items: center;
+  border-radius: 9px; background: var(--surface-soft); color: #8193a6;
+  transition: transform .18s, background .18s;
+}
+.picker-trigger-arrow svg { width: 15px; height: 15px; }
+html[dir="rtl"] .picker-trigger-arrow svg { transform: rotate(180deg); }
+.picker-trigger[aria-expanded="true"] .picker-trigger-arrow { background: #e2eef8; }
+.picker-scrim {
+  position: fixed; inset: 0; z-index: 110;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(16,29,42,.35);
+  -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  animation: picker-backdrop-in 200ms ease-out both;
+}
+.picker-sheet {
+  width: 100%; max-width: 430px; max-height: min(78dvh,650px);
+  overflow: auto; overscroll-behavior: contain;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 25px;
+  box-shadow: 0 22px 70px rgba(9,22,37,.2);
+  padding: 9px 13px 14px; margin: 0;
+  animation: picker-sheet-in 260ms cubic-bezier(.18,.86,.26,1) both;
+}
+.picker-grabber {
+  height: 4px; width: 36px; background: #c8d1db;
+  margin: 2px auto 16px; border-radius: 5px;
+}
+.picker-dialog-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin: 0 6px 14px;
+}
+.picker-dialog-heading { display: grid; gap: 4px; min-width: 0; }
+.picker-dialog-kicker {
+  color: #8899ab; font-size: 9px; font-weight: 800;
+  letter-spacing: .13em; line-height: 1.2;
+}
+.picker-dialog-heading h2 {
+  margin: 0; font-size: 19px; font-weight: 760;
+  line-height: 1.35; color: var(--ink); letter-spacing: -.025em;
+}
+.picker-dismiss {
+  flex: none; display: grid; place-items: center;
+  width: 32px; height: 32px; border: 0; border-radius: 50%;
+  background: var(--surface-soft); color: #6f859a;
+}
+.picker-dismiss svg { width: 16px; height: 16px; }
+.picker-dismiss:focus-visible { outline: 3px solid #8db8d8; outline-offset: 2px; }
+.picker-choice-list {
+  display: grid; gap: 4px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 17px; padding: 5px;
+}
+.picker-choice {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; min-height: 61px;
+  background: transparent; border: 1px solid transparent; border-radius: 12px;
+  color: var(--ink); text-align: start; font: inherit; padding: 9px 10px;
+  transition: background .14s, border-color .14s, transform .14s;
+}
+.picker-choice:hover { background: var(--surface); }
+.picker-choice:active { transform: scale(.985); }
+.picker-choice.is-selected {
+  background: #eaf3fc; border-color: #c4dced;
+}
+.picker-choice:focus-visible { outline: 3px solid #78a9cf; outline-offset: -2px; }
+.picker-choice-glyph {
+  flex: none; display: grid; place-items: center;
+  width: 35px; height: 35px; border: 1px solid var(--line);
+  background: var(--surface); border-radius: 11px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: -.035em; color: #647c94;
+}
+.picker-choice.is-selected .picker-choice-glyph {
+  color: #326b9b; background: #dbeaf7; border-color: #c8def0;
+}
+.picker-choice-copy {
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  flex: 1; min-width: 0;
+}
+.picker-choice-copy strong {
+  font-size: 13px; line-height: 1.3; font-weight: 740;
+  color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.picker-choice-copy small {
+  color: var(--muted); font-size: 10px; line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.picker-choice-check {
+  flex: none; display: grid; place-items: center;
+  width: 22px; height: 22px; color: #327caf; opacity: 0;
+  transform: scale(.8); transition: opacity .12s, transform .12s;
+}
+.picker-choice-check svg { width: 21px; height: 21px; }
+.picker-choice.is-selected .picker-choice-check { opacity: 1; transform: scale(1); }
+.picker-sheet-hint {
+  margin: 12px 3px 0; color: var(--muted); font-size: 10px;
+  line-height: 1.6; text-align: center;
+}
+
+@keyframes picker-sheet-in {
+  from { opacity: .5; transform: translateY(24px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes picker-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+html[data-theme="dark"] .picker-trigger {
+  background: #202932; border-color: #394756; box-shadow: none;
+}
+html[data-theme="dark"] .picker-trigger:hover { background: #26333f; border-color: #637d92; }
+html[data-theme="dark"] .picker-trigger[aria-expanded="true"] {
+  border-color: #83a5c2; box-shadow: 0 0 0 3px rgba(117,167,206,.15);
+}
+html[data-theme="dark"] .picker-trigger-symbol {
+  color: #a9c9e5; background: #2b4051;
+}
+html[data-theme="dark"] .picker-trigger-arrow {
+  background: #2d3a46; color: #aabed0;
+}
+html[data-theme="dark"] .picker-trigger[aria-expanded="true"] .picker-trigger-arrow {
+  background: #344e65;
+}
+html[data-theme="dark"] .picker-scrim { background: rgba(0,0,0,.61); }
+html[data-theme="dark"] .picker-sheet {
+  background: #1d252e; border-color: #394858;
+  box-shadow: 0 22px 76px rgba(0,0,0,.38);
+}
+html[data-theme="dark"] .picker-grabber { background: #5b6977; }
+html[data-theme="dark"] .picker-dialog-kicker { color: #879daf; }
+html[data-theme="dark"] .picker-dismiss { background: #303c48; color: #cad8e5; }
+html[data-theme="dark"] .picker-choice-list {
+  background: #222c36; border-color: #334250;
+}
+html[data-theme="dark"] .picker-choice:hover { background: #2b3946; }
+html[data-theme="dark"] .picker-choice.is-selected {
+  background: #293e51; border-color: #517694;
+}
+html[data-theme="dark"] .picker-choice-glyph {
+  background: #2b3642; border-color: #465563; color: #aabdd0;
+}
+html[data-theme="dark"] .picker-choice.is-selected .picker-choice-glyph {
+  background: #345572; border-color: #4d7696; color: #cbe5fd;
+}
+html[data-theme="dark"] .picker-choice-check { color: #a1cef0; }
+@media (max-width:360px) {
+  .picker-sheet { padding: 8px 10px 13px; }
+  .picker-choice { min-height: 58px; }
+  .picker-trigger { min-height: 60px; }
+  .picker-trigger-copy strong { font-size: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .picker-sheet,.picker-scrim { animation: none !important; }
+  .picker-trigger,.picker-choice,.picker-choice-check { transition-duration: .01ms !important; }
+}

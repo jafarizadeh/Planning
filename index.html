@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr" dir="ltr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f8">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./theme-v13.css">
+<link rel="stylesheet" href="./ios-picker-v14.css">
+<link rel="stylesheet" href="./quick-shifts-v15.css">
+<link rel="icon" href="./favicon-v2.png" type="image/png">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-v2.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Planning">
+<title>Planning</title>
+</head>
+<body>
+<div id="app" class="app-shell">
+<header class="header">
+ <div class="header-title">
+  <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m8 15 2 2 5-5"/></svg></span>
+  <div><h1 data-text="appTitle">برنامه شیفت‌ها</h1><p data-text="appSubtitle">تقویم کار و استراحت من</p></div>
+ </div>
+ <button id="go-today" type="button" class="today-compact" aria-label="Go to current month"></button>
+</header>
+<main class="app-content">
+<section id="home-view" aria-label="Calendar">
+<section class="hero">
+ <div class="hero-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12.5 11 15l5-6"/><circle cx="12" cy="12" r="9"/></svg><span data-text="monthWorked">کارکرد این ماه</span></div>
+ <div class="hero-main"><strong id="month-days" class="hero-number">۰</strong><span class="hero-unit" data-text="daysUnit">روز</span></div>
+
+</section>
+<div class="finance-section-head">
+ <div class="finance-kicker"><span class="finance-kicker-dot" aria-hidden="true"></span><span data-text="payBreakdown">Répartition du salaire</span></div>
+ <span class="finance-period" id="finance-period"></span>
+</div>
+<div class="salary-strip" aria-label="Total salary">
+ <span class="salary-strip-label" data-text="totalLabel">Total</span>
+ <strong class="salary-strip-value money" id="salary-total" dir="ltr">0,00 €</strong>
+</div>
+<div class="finance-grid">
+ <section class="finance-card payslip-card" aria-labelledby="payslip-heading">
+  <div class="finance-card-head">
+   <span class="finance-icon payslip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.9h8l4 4V21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2.1Z"/><path d="M14 3v5h4M8 12h7M8 15.5h7M8 19h4"/></svg></span>
+   <span class="finance-head-text"><strong id="payslip-heading" data-text="payslipTitle">Fiche de paie</strong></span>
+  </div>
+  <div class="payslip-value money" id="payslip-amount" dir="ltr">0,00 €</div>
+  <div class="payslip-footer">
+   <div class="payslip-limit"><span data-text="payslipLimit">Plafond</span><span class="money" id="payslip-cap" dir="ltr">711,00 €</span></div>
+   <div class="payslip-meter" role="progressbar" id="payslip-meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Fiche de paie"><span id="payslip-meter-fill"></span></div>
+   <span class="payslip-percent" id="payslip-percent">0 %</span>
+  </div>
+ </section>
+ <button type="button" id="envelope-card" class="finance-card envelope-card is-locked" aria-disabled="true" aria-expanded="false" aria-label="Enveloppe">
+  <span class="finance-card-head">
+   <span class="finance-icon envelope-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.7" y="5" width="18.6" height="14" rx="3"/><path d="m3.5 7 8.5 7 8.5-7"/></svg></span>
+   <span class="finance-head-text"><strong data-text="envelopeTitle">Enveloppe</strong></span>
+  </span>
+  <span class="envelope-stage" aria-hidden="true">
+   <span class="envelope-illustration">
+    <span class="env-shadow"></span>
+    <span class="env-back"></span>
+    <span class="env-letter" id="envelope-letter">
+     <span class="env-letter-title" data-text="envelopeExtra">EXCÉDENT</span>
+     <strong class="money" id="envelope-amount" dir="ltr">0,00 €</strong>
+     <span class="env-letter-line"></span>
+    </span>
+    <span class="env-flap"></span>
+    <span class="env-front"></span>
+    <span class="env-lock"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="16" cy="16" r="11"/><path d="M8 24 24 8"/></svg></span>
+   </span>
+  </span>
+  <span class="envelope-caption" id="envelope-caption" data-text="envelopeLocked">Enveloppe indisponible</span>
+ </button>
+</div>
+<div class="section-heading"><h2 data-text="calendarHeading">تقویم شیفت‌ها</h2><small data-text="tapHintShort">یک روز را انتخاب کن</small></div>
+<section class="calendar-card">
+ <div class="month-switcher">
+  <button class="month-btn" id="previous-month" type="button" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m15 5-7 7 7 7"/></svg></button>
+  <span class="month-name" id="month-label"></span>
+  <button class="month-btn" id="next-month" type="button" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 5 7 7-7 7"/></svg></button>
+ </div>
+ <div class="weekdays" id="weekdays" aria-hidden="true"></div>
+ <div class="calendar-grid" id="calendar-grid"></div>
+ <div class="shift-key">
+  <span class="shift-key-item"><span class="key-mark" data-text="amShort">ص</span><span id="morning-key">صبح</span></span>
+  <span class="divider-v"></span>
+  <span class="shift-key-item"><span class="key-mark" data-text="pmShort">ع</span><span id="evening-key">عصر</span></span>
+ </div>
+</section>
+<div class="legend">
+ <span class="legend-item"><span class="led work">✓</span><span data-text="worked">کار کردم</span></span>
+ <span class="legend-item"><span class="led off">×</span><span data-text="didNotWork">کار نکردم</span></span>
+ <span class="legend-item"><span class="led unset"></span><span data-text="notRecorded">ثبت نشده</span></span>
+</div>
+<div class="tip">
+ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>
+ <span data-text="tip">برای ثبت یا تغییر شیفت، روی روز موردنظر بزن.</span>
+</div>
+<section class="alltime"><div class="alltime-label"><span data-text="allTime">جمع کل کارکرد</span><small id="alltime-shifts"></small></div><div class="alltime-value"><span id="alltime-days">۰</span> <span data-text="daysUnit">روز</span></div></section>
+<section class="history-section" aria-labelledby="history-heading">
+ <div class="section-heading"><h2 id="history-heading" data-text="historyTitle">تاریخچهٔ ماهانه</h2><small data-text="historySubtitle">تمام ماه‌های ثبت‌شده</small></div>
+ <div id="history-months" class="history-months"></div>
+ <p class="history-footnote" data-text="historyNotice">سوابق ماه‌های قبل با تغییر نرخ ماه جدید دست‌نخورده باقی می‌مانند.</p>
+</section>
+</section>
+<section id="settings-view" hidden aria-label="Settings">
+<div class="settings-header"><h2 data-text="settingsTitle">تنظیمات</h2><p data-text="settingsDescription">تقویم را به سلیقهٔ خودت تنظیم کن.</p></div>
+<form id="settings-form">
+<section class="settings-card">
+ <div class="card-head"><span class="card-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 6-5 12 0 18m0-18c5 6 5 12 0 18"/></svg></span><h3 data-text="display">نمایش تقویم</h3></div>
+ <div class="field picker-field">
+  <span class="field-label" id="language-field-label" data-text="languageLabel">زبان برنامه</span>
+  <div class="picker-trigger-wrap">
+   <button type="button" class="picker-trigger" id="language-picker-trigger" data-picker="language" aria-haspopup="dialog" aria-expanded="false" aria-labelledby="language-field-label language-picker-current">
+    <span class="picker-trigger-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-4.5 5.6-4.5 12.4 0 18m0-18c4.5 5.6 4.5 12.4 0 18"/></svg></span>
+    <span class="picker-trigger-copy"><strong id="language-picker-current">فارسی</strong><small id="language-picker-subtitle">فارسی (ایران)</small></span>
+    <span class="picker-trigger-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></span>
+   </button>
+   <select id="language-select" class="picker-native" tabindex="-1" aria-hidden="true"><option value="de">Deutsch</option><option value="en">English</option><option value="fr">Français</option><option value="fa">فارسی</option><option value="es">Español</option></select>
+  </div>
+ </div>
+ <div class="field picker-field">
+  <span class="field-label" id="weekstart-field-label" data-text="weekStarts">اولین روز هفته</span>
+  <div class="picker-trigger-wrap">
+   <button type="button" class="picker-trigger" id="weekstart-picker-trigger" data-picker="weekstart" aria-haspopup="dialog" aria-expanded="false" aria-labelledby="weekstart-field-label weekstart-picker-current">
+    <span class="picker-trigger-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v5M17 3v5M3 10h18M8 15h3"/></svg></span>
+    <span class="picker-trigger-copy"><strong id="weekstart-picker-current">دوشنبه</strong><small id="weekstart-picker-subtitle"></small></span>
+    <span class="picker-trigger-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></span>
+   </button>
+   <select id="weekstart-select" class="picker-native" tabindex="-1" aria-hidden="true"><option value="1" data-text="monday">دوشنبه</option><option value="6" data-text="saturday">شنبه</option><option value="0" data-text="sunday">یکشنبه</option></select>
+  </div>
+ </div>
+ <fieldset class="appearance-field"><legend class="field-label" data-text="themeLabel">ظاهر برنامه</legend><div class="appearance-segment" role="radiogroup" aria-label="Appearance">
+ <label class="appearance-option"><input type="radio" name="theme" value="light" checked><span class="appearance-value"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span data-text="themeLight">روشن</span></span></label>
+ <label class="appearance-option"><input type="radio" name="theme" value="dark"><span class="appearance-value"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 15.7A8 8 0 0 1 8.3 4a8.1 8.1 0 1 0 11.7 11.7Z"/></svg><span data-text="themeDark">تیره</span></span></label>
+ </div></fieldset>
+</section>
+<section class="settings-card">
+ <div class="card-head"><span class="card-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2"/><circle cx="12" cy="12" r="4"/></svg></span><h3 data-text="shiftNames">نام شیفت‌ها</h3></div>
+ <div class="two-col">
+  <label class="field"><span class="field-label" data-text="morningLabel">شیفت صبح</span><input id="morning-input" class="field-control" type="text" maxlength="25" autocomplete="off"></label>
+  <label class="field"><span class="field-label" data-text="eveningLabel">شیفت عصر</span><input id="evening-input" class="field-control" type="text" maxlength="25" autocomplete="off"></label>
+ </div>
+ <p class="field-hint" data-text="labelsHint">خالی بگذار تا نام پیش‌فرض نمایش داده شود.</p>
+</section>
+<section class="settings-card finance-settings-card">
+ <div class="card-head">
+  <span class="card-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 8.2a4.4 4.4 0 1 0 0 7.6M7 11h7M7 13h7"/></svg></span>
+  <h3 data-text="financeSettings">Calcul du salaire</h3>
+ </div>
+ <div class="finance-inputs">
+  <label class="field">
+   <span class="field-label" data-text="rateLabel">Montant par créneau</span>
+   <span class="money-input-wrap"><input id="shift-rate-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="40.00" required><span aria-hidden="true">€</span></span>
+  </label>
+  <label class="field">
+   <span class="field-label" data-text="capLabel">Plafond fiche de paie</span>
+   <span class="money-input-wrap"><input id="payslip-cap-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="711.00" required><span aria-hidden="true">€</span></span>
+  </label>
+ </div>
+ <p class="finance-settings-note" data-text="financeSettingsNote">Le reste est placé dans l'enveloppe dès que le plafond est atteint.</p>
+</section>
+<button class="button-primary wide" type="submit"><span data-text="saveSettings">ذخیرهٔ تنظیمات</span></button>
+</form>
+<section class="settings-card" style="margin-top:20px">
+ <div class="card-head"><span class="card-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h7"/></svg></span><h3 data-text="dataHeading">اطلاعات و پشتیبان‌گیری</h3></div>
+ <button class="action-btn" type="button" id="export-backup"><span class="action-main"><span data-text="exportData">دریافت فایل پشتیبان</span></span><span class="action-arrow">›</span></button>
+ <button class="action-btn" type="button" id="import-backup"><span class="action-main"><span data-text="importData">بازیابی فایل پشتیبان</span></span><span class="action-arrow">›</span></button>
+ <input type="file" id="backup-file" accept="application/json,.json" hidden>
+ <div class="archive-safety">
+  <span class="archive-safety-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 4 6v6c0 5 4 8 8 10 4-2 8-5 8-10V6l-8-4Z"/><path d="m8 12 3 3 5-6"/></svg></span>
+  <div><strong data-text="historyProtected">حفظ تاریخچه فعال است</strong><p id="archive-status" role="status" aria-live="polite"></p></div>
+ </div>
+ <p class="privacy-note" data-text="privacy">اطلاعات فقط در مرورگر همین دستگاه ذخیره می‌شود. برای نگهداری امن، گاهی فایل پشتیبان بگیر.</p>
+</section>
+<div class="settings-fineprint">Shift Planner · v1.5</div>
+</section>
+</main>
+<nav class="bottom-nav" aria-label="Main navigation">
+ <button id="nav-home" class="nav-item active" type="button" aria-current="page">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg><span data-text="calendarTab">تقویم</span>
+ </button>
+ <button id="nav-settings" class="nav-item" type="button">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 17h16M9 3v8m6 2v8"/><circle cx="9" cy="11" r="2"/><circle cx="15" cy="13" r="2"/></svg><span data-text="settingsTab">تنظیمات</span>
+ </button>
+</nav>
+</div>
+<div id="sheet-root"></div>
+<div id="picker-root"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>
