@@ -9,8 +9,8 @@ user-data stores.
 | [app/equipe](../../tree/app/equipe) | Planning Équipe — employer scheduling & payroll | https://planning-equipe-peach.vercel.app |
 
 **Select an application branch** to find that app's complete deployable root.
-The \`main\` branch is only this directory/index. Do not merge the app branches
-into \`main\` or into each other.
+The `main` branch is only this directory/index. Do not merge the app branches
+into `main` or into each other.
 
 ## Privacy
 
