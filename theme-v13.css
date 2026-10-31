@@ -154,13 +154,11 @@ body { background: var(--app-bg); color: var(--ink); }
 .day.is-today { border-color: #9dbdd7; }
 .legend-item { color: var(--muted); font-size: 10px; }
 .tip { color: var(--muted); }
-.alltime,.history-month,.history-empty {
+.history-month,.history-empty {
   background: var(--surface); border-color: var(--line); box-shadow: none;
 }
-.alltime { padding: 13px 14px; }
-.alltime-label { color: var(--ink); }
-.alltime-label small,.history-month-details { color: var(--muted); }
-.alltime-value,.history-month-total,.history-month-title { color: var(--ink); }
+.history-month-details { color: var(--muted); }
+.history-month-total,.history-month-title { color: var(--ink); }
 .history-month { padding: 12px 13px; }
 .history-month.is-current { background: var(--surface-soft); }
 .history-footnote { color: var(--muted); }

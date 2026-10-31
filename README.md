@@ -3,22 +3,46 @@
 A standalone, mobile-first Progressive Web App for morning/evening shifts and pay.
 Branch: `app/personal`. The employer application is separate on `app/equipe`.
 
-## Development: persistent global modes and a simpler calendar (v2.2)
+## Development: automatic settings and monthly history (v2.3)
+
+The home screen keeps **Historique travail et salaire**, including every recorded
+month and its payroll details. The separate **Total depuis le début** cumulative
+card has been removed. This is a presentation-only change: records, stored pay
+policies, backups and monthly calculations are unchanged.
 
 Settings → **Rémunération** offers two modes:
 
 - **Par créneau:** the existing flat rate per worked shift (default €40).
 - **À l’heure:** an independent hourly rate (initial value €10/hour).
 
-Save settings with **Enregistrer**. Both **Mode de calcul** (shift/hourly) and
+Settings save **automatically**; there is no Save button. Both **Mode de calcul** (shift/hourly) and
 **Versement** (single/split) are global preferences: changing the displayed month,
 year, reopening the app or going offline never resets them. A choice saved while
 viewing a past month applies to all months too.
 
 **Important:** changing either global mode intentionally recalculates the displayed
 amounts for all recorded months, using their own rates and times. A confirmation
-explains this before saving when any worked shifts exist. Cancelling leaves all
-saved settings and data unchanged. Work statuses and personal times are not erased.
+explains this before applying the switch when any worked shifts exist. Cancelling
+restores that switch to its saved choice. Independently edited fields remain saved.
+Work statuses and personal times are not erased.
+
+### Automatic settings
+
+- Language, first weekday, theme and accepted mode switches save immediately.
+- Names and rates save after a 450 ms pause in typing, on blur, and before leaving
+  Settings or hiding the page. Saving does not rebuild the form, move the caret or
+  scroll to the top.
+- Amounts must be nonempty, nonnegative, at most 100,000, and have no more than
+  two decimals. Invalid drafts show an inline message and never overwrite the
+  last valid value; leaving the page restores that valid value.
+- Confirming a default-time picker immediately saves a valid schedule. Equal or
+  overlapping times stay as a visible draft until corrected; other settings can
+  still be saved independently.
+- A small status reports automatic saving, saved changes, validation problems or
+  storage failure. A failed localStorage write can succeed in IndexedDB; if both
+  fail, the UI reports an error and retries on focus/online/return.
+- Exporting a backup flushes valid pending fields first. All persistence remains
+  local; automatic saving is not a cloud backup or a device-sync feature.
 
 Stored rates, payslip caps and default schedules remain associated with their
 recorded months. Editing those numeric/time values in an older month does not
@@ -109,6 +133,8 @@ Optional mobile browser regression (Puppeteer is needed):
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node hourly-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node default-pay-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node global-modes-browser-test.cjs
+PLANNING_TEST_URL=http://127.0.0.1:8080/ node history-layout-browser-test.cjs
+PLANNING_TEST_URL=http://127.0.0.1:8080/ node settings-autosave-browser-test.cjs
 ```
 
 Set `PUPPETEER_MODULE` to an installed Puppeteer module when it is outside the

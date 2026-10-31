@@ -7,11 +7,11 @@ const LANGUAGES = [
   {value:"es", name:"Español", subtitle:"Español · España", initials:"ES"}
 ];
 const COPY = {
-  fa:{close:"بستن",hint:"انتخاب خود را در تنظیمات ذخیره کن",weekHint:"شروع هفته در تقویم",weekDetail:"تقویم از این روز شروع می‌شود"},
-  en:{close:"Close",hint:"Save changes in Settings",weekHint:"Calendar week begins here",weekDetail:"Use this as the first day of the week"},
-  fr:{close:"Fermer",hint:"Enregistrez votre choix dans les paramètres",weekHint:"Début de la semaine du calendrier",weekDetail:"Premier jour affiché dans le calendrier"},
-  de:{close:"Schließen",hint:"Änderungen in den Einstellungen speichern",weekHint:"Beginn der Kalenderwoche",weekDetail:"Erster Tag der Kalenderwoche"},
-  es:{close:"Cerrar",hint:"Guarda los cambios en Ajustes",weekHint:"Inicio de la semana del calendario",weekDetail:"Primer día de la semana"}
+  fa:{close:"بستن",hint:"انتخاب شما خودکار ذخیره می‌شود",weekHint:"شروع هفته در تقویم",weekDetail:"تقویم از این روز شروع می‌شود"},
+  en:{close:"Close",hint:"Your selection is saved automatically",weekHint:"Calendar week begins here",weekDetail:"Use this as the first day of the week"},
+  fr:{close:"Fermer",hint:"Votre choix est enregistré automatiquement",weekHint:"Début de la semaine du calendrier",weekDetail:"Premier jour affiché dans le calendrier"},
+  de:{close:"Schließen",hint:"Ihre Auswahl wird automatisch gespeichert",weekHint:"Beginn der Kalenderwoche",weekDetail:"Erster Tag der Kalenderwoche"},
+  es:{close:"Cerrar",hint:"Tu selección se guarda automáticamente",weekHint:"Inicio de la semana del calendario",weekDetail:"Primer día de la semana"}
 };
 const LOCALES = {fa:"fa-IR",en:"en-GB",fr:"fr-FR",de:"de-DE",es:"es-ES"};
 const escapeHTML = value => String(value).replace(/[&<>"']/g,ch=>({

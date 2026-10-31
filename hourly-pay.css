@@ -73,7 +73,7 @@ html[data-theme="dark"] .time-picker-overlay{background:rgba(0,0,0,.64)}
 
 /* Use the available phone height so both shifts remain easy to reach. */
 .quick-sheet.is-hourly{max-height:calc(100dvh - 24px);padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
-#settings-form button[type="submit"],.pay-mode-option{scroll-margin-block:110px}
+.pay-mode-option{scroll-margin-block:110px}
 
 /* Conditional controls must override author display rules (labels, cards and flex rows). */
 [hidden]{display:none!important}
@@ -93,3 +93,16 @@ html[data-theme="dark"] .time-picker-overlay{background:rgba(0,0,0,.64)}
 
 /* Single payment shows only the existing Total strip, with no duplicate card. */
 .finance-grid[hidden],.payslip-card[hidden]{display:none!important}
+
+/* Autosave is an unobtrusive status, not an extra confirmation button. */
+.settings-autosave-status{display:flex;align-items:center;gap:7px;margin:-3px 2px 17px;color:var(--muted);font-size:11px;line-height:1.6;min-height:20px}
+.settings-autosave-dot{width:6px;height:6px;flex:none;border-radius:50%;background:#8092a5}
+.settings-autosave-status[data-state="saved"]{color:#237b61}
+.settings-autosave-status[data-state="saved"] .settings-autosave-dot{background:#29a47a}
+.settings-autosave-status[data-state="saving"] .settings-autosave-dot{background:#547fa8}
+.settings-autosave-status[data-state="invalid"],.settings-autosave-status[data-state="error"]{color:#aa592d}
+.settings-autosave-status[data-state="invalid"] .settings-autosave-dot,.settings-autosave-status[data-state="error"] .settings-autosave-dot{background:#c58248}
+.settings-field-feedback{display:block;color:#a55235;font-size:10px;line-height:1.6;margin:6px 1px 0}
+.field-control[aria-invalid="true"]{border-color:#c78965!important}
+html[data-theme="dark"] .settings-autosave-status[data-state="saved"]{color:#8acfb2}
+html[data-theme="dark"] .settings-autosave-status[data-state="invalid"],html[data-theme="dark"] .settings-autosave-status[data-state="error"],html[data-theme="dark"] .settings-field-feedback{color:#e3b082}

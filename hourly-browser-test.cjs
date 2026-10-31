@@ -38,9 +38,9 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const setMode=async(mode,rate=null)=>{
    await page.click('#nav-settings');
    await page.click('.pay-mode-option:has(input[value="'+mode+'"])');
-   if(rate!==null)await page.$eval('#'+(mode==='hourly'?'hourly':'shift')+'-rate-input',(e,r)=>e.value=String(r),rate);
-   await page.$eval('#settings-form button[type="submit"]',e=>e.scrollIntoView({block:'center'}));
-   await page.click('#settings-form button[type="submit"]');
+   if(rate!==null)await page.$eval('#'+(mode==='hourly'?'hourly':'shift')+'-rate-input',(e,r)=>{e.value=String(r);e.dispatchEvent(new Event('change',{bubbles:true}));},rate);
+
+
    await page.click('#nav-home');
   };
   const setTime=async(shift,boundary,value)=>{
@@ -71,7 +71,7 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   assert.equal(await page.$eval('#hourly-rate-field',e=>e.hidden),false);
   assert.equal(await page.$eval('#shift-rate-field',e=>e.hidden),true);
   await page.screenshot({path:OUT+'/planning-hourly-settings.png',fullPage:true});
-  await page.click('#settings-form button[type="submit"]');
+
   assert.ok(dialogs.at(-1).includes('tous les mois'));
   await page.click('#nav-home');
   assert.equal(await getSalary(),40);
@@ -121,8 +121,8 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   for(const lang of ['en','de','es','fa','fr']){
    await page.click('#nav-settings');await page.select('#language-select',lang);
    await page.$eval('input[name="theme"][value="dark"]',e=>{e.checked=true;e.dispatchEvent(new Event('change'));});
-   await page.$eval('#settings-form button[type="submit"]',e=>e.scrollIntoView({block:'center'}));
-   await page.click('#settings-form button[type="submit"]');await page.click('#nav-home');
+
+   await page.click('#nav-home');
    for(const width of [320,375,430]){
     await page.setViewport({width,height:812,deviceScaleFactor:2,isMobile:true,hasTouch:true});
     await openDay();

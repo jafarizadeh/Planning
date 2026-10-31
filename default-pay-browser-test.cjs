@@ -28,7 +28,7 @@ const euros=s=>Number(s.replace(/\s/g,'').replace('€','').replace(',','.'));
   const visible=selector=>page.$eval(selector,e=>getComputedStyle(e).display!=='none'&&e.getClientRects().length>0);
   const tap=async selector=>{await page.$eval(selector,e=>e.scrollIntoView({block:'center'}));await page.click(selector);};
   const settings=()=>page.click('#nav-settings');
-  const save=async()=>{await tap('#settings-form button[type="submit"]');await page.click('#nav-home');};
+  const save=async()=>{await page.click('#nav-home');};
   const mode=async(name,value)=>tap('.pay-mode-option:has(input[name="'+name+'"][value="'+value+'"])');
   const open=async(key='2026-10-05')=>{await tap('#calendar-grid [data-date="'+key+'"]');await wait(240);};
   const close=()=>page.click('.quick-close');
@@ -88,7 +88,7 @@ const euros=s=>Number(s.replace(/\s/g,'').replace('€','').replace(',','.'));
   await page.screenshot({path:OUT+'/planning-v21-default-day.png',fullPage:false});await close();
   // Reject invalid defaults without changing the archive; cancel a wheel without saving.
   await settings();const beforeBad=JSON.stringify((await archive()).monthlyPolicies);
-  await defaultTime('morning','end','11:00');await tap('#settings-form button[type="submit"]');
+  await defaultTime('morning','end','11:00');
   assert.equal(JSON.stringify((await archive()).monthlyPolicies),beforeBad);
   await defaultTime('morning','end','14:00');await defaultTime('morning','start','10:00');await save();
   await settings();await mode('pay-mode','shift');assert.equal(await visible('#default-hours-settings'),false);

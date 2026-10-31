@@ -98,7 +98,6 @@
  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>
  <span data-text="tip">برای ثبت یا تغییر شیفت، روی روز موردنظر بزن.</span>
 </div>
-<section class="alltime"><div class="alltime-label"><span data-text="allTime">جمع کل کارکرد</span><small id="alltime-shifts"></small></div><div class="alltime-value"><span id="alltime-days">۰</span> <span data-text="daysUnit">روز</span></div></section>
 <section class="history-section" aria-labelledby="history-heading">
  <div class="section-heading"><h2 id="history-heading" data-text="historyTitle">تاریخچهٔ ماهانه</h2><small data-text="historySubtitle">تمام ماه‌های ثبت‌شده</small></div>
  <div id="history-months" class="history-months"></div>
@@ -107,7 +106,8 @@
 </section>
 <section id="settings-view" hidden aria-label="Settings">
 <div class="settings-header"><h2 data-text="settingsTitle">تنظیمات</h2><p data-text="settingsDescription">تقویم را به سلیقهٔ خودت تنظیم کن.</p></div>
-<form id="settings-form">
+<div id="settings-autosave-status" class="settings-autosave-status" data-state="idle" role="status" aria-live="polite" aria-atomic="true"><span class="settings-autosave-dot" aria-hidden="true"></span><span>Enregistrement automatique</span></div>
+<form id="settings-form" novalidate>
 <section class="settings-card">
  <div class="card-head"><span class="card-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 6-5 12 0 18m0-18c5 6 5 12 0 18"/></svg></span><h3 data-text="display">نمایش تقویم</h3></div>
  <div class="field picker-field">
@@ -161,11 +161,13 @@
  <div class="finance-inputs">
   <label class="field" id="shift-rate-field">
    <span class="field-label" data-text="rateLabel">Taux par créneau</span>
-   <span class="money-input-wrap"><input id="shift-rate-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="40.00" required><span aria-hidden="true">€</span></span>
+   <span class="money-input-wrap"><input id="shift-rate-input" aria-describedby="shift-rate-input-feedback" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="40.00" required><span aria-hidden="true">€</span></span>
+   <small class="settings-field-feedback" id="shift-rate-input-feedback" hidden></small>
   </label>
   <label class="field" id="hourly-rate-field" hidden>
    <span class="field-label" data-text="hourlyRateLabel">Taux horaire</span>
-   <span class="money-input-wrap"><input id="hourly-rate-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="10.00"><span aria-hidden="true">€/h</span></span>
+   <span class="money-input-wrap"><input id="hourly-rate-input" aria-describedby="hourly-rate-input-feedback" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="10.00"><span aria-hidden="true">€/h</span></span>
+   <small class="settings-field-feedback" id="hourly-rate-input-feedback" hidden></small>
   </label>
 
  </div>
@@ -179,7 +181,7 @@
  <button type="button" class="time-value-button has-value" data-default-time data-shift="evening" data-boundary="start" aria-haspopup="dialog"><span class="time-value-label" data-text="timeStart">Début</span><strong dir="ltr">18:00</strong></button>
  <button type="button" class="time-value-button has-value" data-default-time data-shift="evening" data-boundary="end" aria-haspopup="dialog"><span class="time-value-label" data-text="timeEnd">Fin</span><strong dir="ltr">22:00</strong></button>
  </div></div>
- <p class="default-times-note" data-text="defaultTimesHint"></p></fieldset>
+ <p class="default-times-note" data-text="defaultTimesHint"></p><p id="default-hours-error" class="settings-field-feedback" role="status" hidden></p></fieldset>
  <fieldset class="payment-mode-field"><legend class="field-label" data-text="paymentModeLabel">Versement</legend>
  <div class="pay-mode-segment">
  <label class="pay-mode-option"><input type="radio" name="payment-mode" value="single"><span data-text="paymentSingle">En une fois</span></label>
@@ -188,11 +190,11 @@
  <p class="payment-mode-note" id="payment-mode-note"></p>
  <label class="field" id="payslip-cap-field">
  <span class="field-label" data-text="capLabel">Plafond fiche de paie</span>
- <span class="money-input-wrap"><input id="payslip-cap-input" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="711.00" required><span aria-hidden="true">€</span></span>
+ <span class="money-input-wrap"><input id="payslip-cap-input" aria-describedby="payslip-cap-input-feedback" class="field-control money-input" type="number" inputmode="decimal" min="0" max="100000" step="0.01" value="711.00" required><span aria-hidden="true">€</span></span>
+   <small class="settings-field-feedback" id="payslip-cap-input-feedback" hidden></small>
  </label>
  <p class="finance-settings-note" data-text="policyNote"></p>
 </section>
-<button class="button-primary wide" type="submit"><span data-text="saveSettings">ذخیرهٔ تنظیمات</span></button>
 </form>
 <section class="settings-card" style="margin-top:20px">
  <div class="card-head"><span class="card-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h7"/></svg></span><h3 data-text="dataHeading">اطلاعات و پشتیبان‌گیری</h3></div>
@@ -205,7 +207,7 @@
  </div>
  <p class="privacy-note" data-text="privacy">اطلاعات فقط در مرورگر همین دستگاه ذخیره می‌شود. برای نگهداری امن، گاهی فایل پشتیبان بگیر.</p>
 </section>
-<div class="settings-fineprint">Planning · v2.2</div>
+<div class="settings-fineprint">Planning · v2.3</div>
 </section>
 </main>
 <nav class="bottom-nav" aria-label="Main navigation">

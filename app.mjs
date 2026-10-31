@@ -242,7 +242,7 @@ function escapeHTML(value) {
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[char]));
 }
-function persist(_key, _value) {
+function persist(_key, _value, onComplete=null) {
   hasUnsavedUserEdit=true;
   const snapshot={
     schemaVersion:5,savedAt:Math.max(Date.now(),lastSavedAt+1),records,settings,
@@ -263,7 +263,12 @@ function persist(_key, _value) {
     showToast(t("storageError"));
   }
   void saveArchiveToDb(snapshot).then(ok=>{
+    if(ok)lastSavedAt=Math.max(lastSavedAt,snapshot.savedAt);
     if(!ok && !savedLocally) showToast(t("storageError"));
+    onComplete?.(savedLocally||ok);
+  }).catch(()=>{
+    if(!savedLocally)showToast(t("storageError"));
+    onComplete?.(savedLocally);
   });
   return savedLocally;
 }
@@ -308,6 +313,9 @@ function showToast(message) {
 let analyzedRecords=null,cachedTimes={},analyzedPolicySignature="";
 let draftDefaultTimes=sanitizeDefaultTimes(selectedPolicy().defaultTimes);
 let defaultHoursTouched=false;
+let settingsAutosaveTimer=null,settingsAutosaveState="idle",settingsSaveSequence=0;
+let settingsNeedRetry=false;
+const pendingSettingsFields=new Map(),settingsFieldErrors=new Set();
 function getTimeAnalysis(){
   const signature=JSON.stringify([monthlyPolicies,payPolicy(settings)]);
   if(analyzedRecords!==records||analyzedPolicySignature!==signature){
@@ -360,7 +368,7 @@ function openDefaultTime(button){
   const shift=button.dataset.shift,boundary=button.dataset.boundary;
   timePicker.open({value:draftDefaultTimes[shift][boundary],trigger:button,allowClear:false,
     label:shiftName(shift)+" · "+t(boundary==="start"?"timeStart":"timeEnd"),
-    onCommit:value=>{if(value){draftDefaultTimes[shift][boundary]=value;defaultHoursTouched=true;renderDefaultTimeButtons();updatePayModePreview();}}
+    onCommit:value=>{if(value){draftDefaultTimes[shift][boundary]=value;defaultHoursTouched=true;renderDefaultTimeButtons();updatePayModePreview();saveAutomaticDefaultTimes();}}
   });
 }
 
@@ -449,7 +457,7 @@ function restoreDefaultShift(key,shift){
   auditChange("shift",key.slice(0,7),key+" "+shift+" restore defaults; previous "+JSON.stringify(before));
   envelopeOpen=false;updateSheetControls();refreshShiftSummary();persist(DATA_KEY,records);
 }
-function renderTranslations() {
+function renderTranslations(preserveDrafts=false) {
   document.documentElement.lang = settings.language;
   document.documentElement.dir = settings.language === "fa" ? "rtl" : "ltr";
   applyTheme(settings.theme);
@@ -468,12 +476,16 @@ function renderTranslations() {
   $("language-select").value = settings.language;
   $("weekstart-select").value = String(settings.weekStart);
   pickerControls.refresh();
-  $("morning-input").value = settings.morningName;
-  $("evening-input").value = settings.eveningName;
+  if(!preserveDrafts){
+    $("morning-input").value=settings.morningName;
+    $("evening-input").value=settings.eveningName;
+  }
   $("morning-input").placeholder = t("morning");
   $("evening-input").placeholder = t("evening");
-  fillPaySettings();
+  if(!preserveDrafts)fillPaySettings();
+  else {renderDefaultTimeButtons();updatePayModePreview();$("pay-settings-period").textContent=t("policyPeriod").replace("{month}",monthLocale());}
   updateArchiveStatus();
+  renderSettingsAutosaveStatus();
 }
 function ledMarkup(status) {
   const symbol = status === "work" ? "✓" : status === "off" ? "×" : "";
@@ -545,12 +557,9 @@ function renderHistory() {
 }
 function renderCalendar() {
   const stats = monthStats(records,year,month);
-  const all = overallStats(records);
   $("month-label").textContent = monthLocale();
   $("month-days").textContent = num(stats.halfDays);
   renderPayroll(stats);
-  $("alltime-days").textContent = num(all.halfDays);
-  $("alltime-shifts").textContent = num(all.work) + " " + t("shiftsCount");
   renderHistory();
   const order = Array.from({length:7},(_,i)=>(settings.weekStart+i)%7);
   $("weekdays").innerHTML = order.map(day=>
@@ -605,6 +614,7 @@ document.addEventListener("visibilitychange",()=>{
 window.addEventListener("pageshow",refreshCurrentDay);
 scheduleCurrentDayRefresh();
 function showPage(nextPage) {
+  if(page==="settings"&&nextPage!=="settings")flushSettingsFields({discardInvalid:true});
   page = nextPage;
   $("home-view").hidden = page !== "home";
   $("settings-view").hidden = page !== "settings";
@@ -717,10 +727,8 @@ function updateCalendarDay(key) {
   if(leds)leds.innerHTML=ledMarkup(am)+ledMarkup(pm);
 }
 function refreshShiftSummary() {
-  const monthly=monthStats(records,year,month),all=overallStats(records);
+  const monthly=monthStats(records,year,month);
   $("month-days").textContent=num(monthly.halfDays);
-  $("alltime-days").textContent=num(all.halfDays);
-  $("alltime-shifts").textContent=num(all.work)+" "+t("shiftsCount");
   renderPayroll(monthly);
   renderHistory();
   decorateCalendarTimes();
@@ -807,11 +815,6 @@ $("go-today").addEventListener("click",()=>{
 });
 $("nav-home").addEventListener("click",()=>showPage("home"));
 $("nav-settings").addEventListener("click",()=>showPage("settings"));
-document.querySelectorAll('input[name="theme"]').forEach(input=>{
-  input.addEventListener("change",()=>{
-    if(input.checked) applyTheme(input.value);
-  });
-});
 $("history-months").addEventListener("click",event=>{
   const button=event.target.closest("button[data-period]");
   if(!button)return;
@@ -905,60 +908,200 @@ document.addEventListener("keydown",event=>{
   if(event.key==="Escape" && chosenDate && !timePicker.isOpen()) closeSheet();
 });
 
-$("settings-form").addEventListener("submit",event=>{
-  event.preventDefault();
-  const selectedMonth=periodKey(year,month),oldPolicy=payPolicy(selectedPolicy());
-  const updatedPolicy=payPolicy({
-    payMode:document.querySelector('input[name="pay-mode"]:checked')?.value||settings.payMode,
-    shiftRate:$("shift-rate-input").disabled?oldPolicy.shiftRate:$("shift-rate-input").value,
-    hourlyRate:$("hourly-rate-input").disabled?oldPolicy.hourlyRate:$("hourly-rate-input").value,
-    paymentMode:document.querySelector('input[name="payment-mode"]:checked')?.value||settings.paymentMode,
-    payslipCap:$("payslip-cap-input").disabled?oldPolicy.payslipCap:$("payslip-cap-input").value,
-    defaultTimes:draftDefaultTimes,
-    useDefaultTimes:oldPolicy.useDefaultTimes||defaultHoursTouched
-  });
-  if(updatedPolicy.payMode==="hourly"&&!validDefaultSchedule(draftDefaultTimes)){
-    showToast(t("invalidDefaultSchedule"));return;
+// Settings save independently: an invalid amount must not block a language/theme change.
+const autoTextFields={"morning-input":"morningName","evening-input":"eveningName"};
+const autoMoneyFields={"shift-rate-input":"shiftRate","hourly-rate-input":"hourlyRate","payslip-cap-input":"payslipCap"};
+function renderSettingsAutosaveStatus(){
+  const node=$("settings-autosave-status");
+  if(!node)return;
+  const state=settingsFieldErrors.size?"invalid":pendingSettingsFields.size?"saving":settingsAutosaveState;
+  const key={idle:"autosaveReady",saving:"autosaveSaving",saved:"autosaveSaved",invalid:"autosaveInvalid",error:"autosaveStorageError"}[state]||"autosaveReady";
+  node.dataset.state=state;
+  node.setAttribute("aria-busy",String(state==="saving"));
+  node.querySelector("span:last-child").textContent=t(key);
+  for(const id of Object.keys(autoMoneyFields)){
+    const input=$(id),message=$(id+"-feedback");
+    const invalid=settingsFieldErrors.has(id)&&!input.disabled;
+    input.setAttribute("aria-invalid",String(invalid));
+    if(message){message.hidden=!invalid;message.textContent=t("autosaveMoneyInvalid");}
   }
-  const modesChanged=updatedPolicy.payMode!==settings.payMode||updatedPolicy.paymentMode!==settings.paymentMode;
-  // Modes affect EVERY month. Confirm before intentionally recalculating recorded
-  // work; cancel must not modify any preference, monthly policy or recorded time.
-  if(modesChanged&&overallStats(records).work>0&&!confirm(t("modeConfirm")))return;
-  const onlyValues=policy=>{
-    const {payMode,paymentMode,...values}=policy;return values;
-  };
-  const valuesChanged=JSON.stringify(onlyValues(updatedPolicy))!==JSON.stringify(onlyValues(oldPolicy));
+  const scheduleError=$("default-hours-error");
+  if(scheduleError){
+    scheduleError.hidden=!settingsFieldErrors.has("defaultTimes");
+    scheduleError.textContent=t("invalidDefaultSchedule");
+  }
+}
+function refreshSettingsViews(translate=false){
+  if(translate)renderTranslations(true);
+  else {renderDefaultTimeButtons();updatePayModePreview();}
+  renderCalendar();
+  if(chosenDate)updateSheetControls();
+  renderSettingsAutosaveStatus();
+}
+function persistAutomaticSettings(translate=false){
+  const sequence=++settingsSaveSequence;
+  settingsAutosaveState="saving";
+  const localSaved=persist(SETTINGS_KEY,settings,ok=>{
+    if(sequence!==settingsSaveSequence)return;
+    settingsNeedRetry=!ok;
+    settingsAutosaveState=ok?"saved":"error";
+    renderSettingsAutosaveStatus();
+  });
+  if(localSaved){settingsAutosaveState="saved";settingsNeedRetry=false;}
+  refreshSettingsViews(translate);
+}
+function updateMonthlySettingValues(patch,period=periodKey(year,month)){
+  const oldPolicy=policyForPeriod(period,monthlyPolicies,settings);
+  const updatedPolicy=payPolicy({...oldPolicy,...patch});
+  if(JSON.stringify(updatedPolicy)===JSON.stringify(oldPolicy))return false;
+  // Snapshot existing months before changing defaults for not-yet-recorded months.
   rememberExistingMonths();
-  if(valuesChanged){
-    monthlyPolicies[selectedMonth]=updatedPolicy;
-    auditChange("settings",selectedMonth,JSON.stringify(oldPolicy)+" > "+JSON.stringify(updatedPolicy));
+  monthlyPolicies[period]=updatedPolicy;
+  const now=new Date(),current=periodKey(now.getFullYear(),now.getMonth());
+  if(period>=current){
+    settings=sanitizeSettings({...settings,...patch});
   }
-  if(modesChanged){
-    auditChange("settings","","Global modes: "+settings.payMode+"/"+settings.paymentMode+
-      " > "+updatedPolicy.payMode+"/"+updatedPolicy.paymentMode);
-  }
-  const today=new Date(),currentPeriod=periodKey(today.getFullYear(),today.getMonth());
-  // Old-month monetary/time edits remain local to that month; both switches are
-  // ALWAYS stored globally, including when Settings was opened from a past month.
-  const defaults=valuesChanged&&selectedMonth>=currentPeriod?updatedPolicy:payPolicy(settings);
-  settings=sanitizeSettings({...defaults,
-    payMode:updatedPolicy.payMode,paymentMode:updatedPolicy.paymentMode,
-    language:$("language-select").value,
-    theme:document.querySelector('input[name="theme"]:checked')?.value||settings.theme,
-    weekStart:Number($("weekstart-select").value),
-    morningName:$("morning-input").value,eveningName:$("evening-input").value
-  });
+  auditChange("settings",period,JSON.stringify(oldPolicy)+" > "+JSON.stringify(updatedPolicy));
   envelopeOpen=false;
-  persist(SETTINGS_KEY,settings);renderAll();showToast(t("settingsSaved"));
-});
+  return true;
+}
+function queueSettingField(input,immediate=false){
+  if(input.disabled)return;
+  const id=input.id;
+  if(!autoTextFields[id]&&!autoMoneyFields[id])return;
+  hasUnsavedUserEdit=true;
+  pendingSettingsFields.set(id,{value:input.value,period:periodKey(year,month),valid:input.validity.valid});
+  if(input.validity.valid&&(!autoMoneyFields[id]||input.value.trim()!==""))settingsFieldErrors.delete(id);
+  settingsAutosaveState="saving";
+  clearTimeout(settingsAutosaveTimer);
+  if(immediate)flushSettingsFields();
+  else settingsAutosaveTimer=setTimeout(()=>flushSettingsFields(),450);
+  renderSettingsAutosaveStatus();
+}
+function flushSettingsFields({discardInvalid=false}={}){
+  clearTimeout(settingsAutosaveTimer);settingsAutosaveTimer=null;
+  let changed=false;
+  for(const [id,draft] of [...pendingSettingsFields]){
+    const input=$(id);
+    if(!input||input.disabled){pendingSettingsFields.delete(id);settingsFieldErrors.delete(id);continue;}
+    if(autoMoneyFields[id]){
+      const amount=Number(draft.value);
+      const valid=draft.value.trim()!==""&&draft.valid&&Number.isFinite(amount)&&amount>=0&&amount<=100000&&Math.abs(amount*100-Math.round(amount*100))<0.000001;
+      if(!valid){settingsFieldErrors.add(id);continue;}
+      changed=updateMonthlySettingValues({[autoMoneyFields[id]]:amount},draft.period)||changed;
+    }else{
+      const property=autoTextFields[id];
+      const clean=sanitizeSettings({...settings,[property]:draft.value});
+      if(clean[property]!==settings[property]){
+        settings=clean;changed=true;
+        auditChange("settings","","Updated shift label: "+property);
+      }
+    }
+    pendingSettingsFields.delete(id);settingsFieldErrors.delete(id);
+  }
+  if(changed||settingsNeedRetry)persistAutomaticSettings();
+  else if(!pendingSettingsFields.size&&settingsAutosaveState==="saving")settingsAutosaveState="saved";
+  if(discardInvalid&&settingsFieldErrors.size){
+    // Leaving the form saves all valid drafts, then restores only invalid ones.
+    for(const id of settingsFieldErrors){
+      if(autoMoneyFields[id]){
+        $(id).value=policyForPeriod(pendingSettingsFields.get(id)?.period||periodKey(year,month),monthlyPolicies,settings)[autoMoneyFields[id]].toFixed(2);
+        pendingSettingsFields.delete(id);
+      }
+    }
+    if(settingsFieldErrors.has("defaultTimes")){
+      draftDefaultTimes=sanitizeDefaultTimes(selectedPolicy().defaultTimes);defaultHoursTouched=false;
+      renderDefaultTimeButtons();
+    }
+    settingsFieldErrors.clear();
+    if(settingsAutosaveState==="saving")settingsAutosaveState="idle";
+    showToast(t("autosaveInvalidKeptPrevious"));
+  }
+  renderSettingsAutosaveStatus();
+}
+function discardInactiveSettingsDrafts(){
+  const policy=selectedPolicy();
+  for(const [id,key] of Object.entries(autoMoneyFields)){
+    if($(id).disabled){
+      pendingSettingsFields.delete(id);settingsFieldErrors.delete(id);
+      $(id).value=policy[key].toFixed(2);
+    }
+  }
+  if(policy.payMode!=="hourly"&&settingsFieldErrors.has("defaultTimes")){
+    draftDefaultTimes=sanitizeDefaultTimes(policy.defaultTimes);
+    defaultHoursTouched=false;settingsFieldErrors.delete("defaultTimes");renderDefaultTimeButtons();
+  }
+}
+function saveAutomaticMode(input){
+  if(!input.checked)return;
+  const property=input.name==="pay-mode"?"payMode":"paymentMode";
+  const allowed=property==="payMode"?["shift","hourly"]:["single","split"];
+  if(!allowed.includes(input.value))return;
+  flushSettingsFields();
+  const value=input.value;
+  if(value===settings[property]){updatePayModePreview();renderSettingsAutosaveStatus();return;}
+  if(overallStats(records).work>0&&!confirm(t("modeConfirm"))){
+    document.querySelector('input[name="'+input.name+'"][value="'+settings[property]+'"]').checked=true;
+    updatePayModePreview();renderSettingsAutosaveStatus();return;
+  }
+  const previous=settings[property];
+  rememberExistingMonths();
+  settings=sanitizeSettings({...settings,[property]:value});
+  auditChange("settings","","Global "+property+": "+previous+" > "+value);
+  envelopeOpen=false;
+  updatePayModePreview();discardInactiveSettingsDrafts();
+  persistAutomaticSettings();
+}
+function saveAutomaticPreference(input){
+  let property,value;
+  if(input.id==="language-select"){property="language";value=input.value;}
+  else if(input.id==="weekstart-select"){property="weekStart";value=Number(input.value);}
+  else if(input.name==="theme"&&input.checked){property="theme";value=input.value;}
+  else return;
+  if(settings[property]===value)return;
+  hasUnsavedUserEdit=true;
+  settings=sanitizeSettings({...settings,[property]:value});
+  auditChange("settings","","Preference "+property+" changed");
+  persistAutomaticSettings(true);
+}
+function saveAutomaticDefaultTimes(){
+  hasUnsavedUserEdit=true;
+  if(!validDefaultSchedule(draftDefaultTimes)){
+    settingsFieldErrors.add("defaultTimes");renderSettingsAutosaveStatus();return;
+  }
+  settingsFieldErrors.delete("defaultTimes");
+  const changed=updateMonthlySettingValues({defaultTimes:sanitizeDefaultTimes(draftDefaultTimes),useDefaultTimes:true});
+  defaultHoursTouched=false;
+  if(changed)persistAutomaticSettings();
+  else renderSettingsAutosaveStatus();
+}
+$("settings-form").addEventListener("submit",event=>{event.preventDefault();flushSettingsFields();});
+for(const id of [...Object.keys(autoTextFields),...Object.keys(autoMoneyFields)]){
+  const input=$(id);
+  input.addEventListener("input",event=>{if(!event.isComposing)queueSettingField(input);});
+  input.addEventListener("compositionend",()=>queueSettingField(input));
+  input.addEventListener("change",()=>queueSettingField(input,true));
+  input.addEventListener("blur",()=>{if(pendingSettingsFields.has(id))flushSettingsFields();});
+}
 document.querySelectorAll('input[name="pay-mode"],input[name="payment-mode"]').forEach(input=>{
-  input.addEventListener("change",updatePayModePreview);
+  input.addEventListener("change",()=>saveAutomaticMode(input));
 });
+for(const input of document.querySelectorAll('#language-select,#weekstart-select,input[name="theme"]')){
+  input.addEventListener("change",()=>saveAutomaticPreference(input));
+}
 document.querySelectorAll('[data-default-time]').forEach(button=>{
   button.addEventListener("click",()=>openDefaultTime(button));
 });
+window.addEventListener("pagehide",()=>flushSettingsFields());
+window.addEventListener("focus",()=>{if(settingsNeedRetry)persistAutomaticSettings();});
+window.addEventListener("online",()=>{if(settingsNeedRetry)persistAutomaticSettings();});
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden)flushSettingsFields();
+  else if(settingsNeedRetry)persistAutomaticSettings();
+});
 
 $("export-backup").addEventListener("click",()=>{
+  flushSettingsFields();
   const backup = makeBackup(records,settings,monthlyPolicies,audit);
   const blob = new Blob([JSON.stringify(backup,null,2)],{type:"application/json;charset=utf-8"});
   const url = URL.createObjectURL(blob);

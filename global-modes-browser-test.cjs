@@ -47,7 +47,7 @@ const euro=text=>Number(text.replace(/\s/g,'').replace('€','').replace(',','.'
   const setModes=async(payMode,paymentMode)=>{
    await page.click('#nav-settings');
    for(const [name,value] of [['pay-mode',payMode],['payment-mode',paymentMode]])await tap('.pay-mode-option:has(input[name="'+name+'"][value="'+value+'"])');
-   await tap('#settings-form button[type="submit"]');await page.click('#nav-home');
+   await page.click('#nav-home');
   };
   const inspectModes=async(payMode,paymentMode)=>{
    await page.click('#nav-settings');await checked('pay-mode',payMode);await checked('payment-mode',paymentMode);
@@ -106,7 +106,7 @@ const euro=text=>Number(text.replace(/\s/g,'').replace('€','').replace(',','.'
   for(const lang of ['fr','en','de','es','fa']){
    await page.click('#nav-settings');await page.select('#language-select',lang);
    await page.$eval('input[name="theme"][value="dark"]',e=>{e.checked=true;e.dispatchEvent(new Event('change'));});
-   await tap('#settings-form button[type="submit"]');await page.click('#nav-home');
+   await page.click('#nav-home');
    for(const width of [320,375,430]){
     await page.setViewport({width,height:812,deviceScaleFactor:2,isMobile:true,hasTouch:true});
     assert.equal(await page.$('.shift-key'),null);assert.equal(await visible('.finance-grid'),false);

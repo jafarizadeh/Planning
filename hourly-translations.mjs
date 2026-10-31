@@ -1,4 +1,4 @@
-// Planning personal: persistent global modes and per-month recorded amounts/times.
+// Planning personal: global modes, monthly values and safe automatic settings.
 export const hourlyTranslations={
   "fr": {
     "financeSettings": "Rémunération",
@@ -47,7 +47,14 @@ export const hourlyTranslations={
     "singlePaymentNote": "Le montant total est versé en une fois, sans plafond ni enveloppe.",
     "splitPaymentNote": "La part au-delà du plafond est placée dans l’enveloppe.",
     "overnightTag": "+1 jour",
-    "legacyDefaultsNote": "Horaires historiques conservés. Pour utiliser des horaires par défaut dans ce mois, ajustez-les ici."
+    "legacyDefaultsNote": "Horaires historiques conservés. Pour utiliser des horaires par défaut dans ce mois, ajustez-les ici.",
+    "autosaveReady": "Enregistrement automatique",
+    "autosaveSaving": "Enregistrement…",
+    "autosaveSaved": "Modifications enregistrées",
+    "autosaveInvalid": "Vérifiez les valeurs non enregistrées",
+    "autosaveStorageError": "Enregistrement impossible — réessayez",
+    "autosaveMoneyInvalid": "Indiquez un montant entre 0 et 100 000 €, avec au plus deux décimales.",
+    "autosaveInvalidKeptPrevious": "Valeur invalide non enregistrée ; la valeur précédente a été conservée."
   },
   "en": {
     "financeSettings": "Pay",
@@ -96,7 +103,14 @@ export const hourlyTranslations={
     "singlePaymentNote": "The full amount is paid together, without a cap or envelope.",
     "splitPaymentNote": "The amount above the payslip limit goes into the envelope.",
     "overnightTag": "+1 day",
-    "legacyDefaultsNote": "Historical times are preserved. To use default times for this month, adjust them here."
+    "legacyDefaultsNote": "Historical times are preserved. To use default times for this month, adjust them here.",
+    "autosaveReady": "Automatic saving",
+    "autosaveSaving": "Saving…",
+    "autosaveSaved": "Changes saved",
+    "autosaveInvalid": "Check the unsaved values",
+    "autosaveStorageError": "Could not save — please retry",
+    "autosaveMoneyInvalid": "Enter an amount from €0 to €100,000, with at most two decimal places.",
+    "autosaveInvalidKeptPrevious": "Invalid value was not saved; the previous value was kept."
   },
   "fa": {
     "financeSettings": "دستمزد",
@@ -145,7 +159,14 @@ export const hourlyTranslations={
     "singlePaymentNote": "کل مبلغ یکجا پرداخت می‌شود؛ بدون سقف فیش و بدون پاکت.",
     "splitPaymentNote": "مبلغ بیش از سقف فیش حقوقی وارد پاکت می‌شود.",
     "overnightTag": "+۱ روز",
-    "legacyDefaultsNote": "ساعت‌های قبلی حفظ شده‌اند. برای استفاده از ساعت‌های پیش‌فرض در این ماه، آن‌ها را اینجا تغییر بده."
+    "legacyDefaultsNote": "ساعت‌های قبلی حفظ شده‌اند. برای استفاده از ساعت‌های پیش‌فرض در این ماه، آن‌ها را اینجا تغییر بده.",
+    "autosaveReady": "ذخیرهٔ خودکار",
+    "autosaveSaving": "در حال ذخیره…",
+    "autosaveSaved": "تغییرات ذخیره شدند",
+    "autosaveInvalid": "مقدارهای ذخیره‌نشده را بررسی کن",
+    "autosaveStorageError": "ذخیره نشد؛ دوباره تلاش کن",
+    "autosaveMoneyInvalid": "مبلغی بین ۰ تا ۱۰۰٬۰۰۰ یورو با حداکثر دو رقم اعشار وارد کن.",
+    "autosaveInvalidKeptPrevious": "مقدار نامعتبر ذخیره نشد؛ مقدار قبلی حفظ شد."
   },
   "de": {
     "financeSettings": "Vergütung",
@@ -194,7 +215,14 @@ export const hourlyTranslations={
     "singlePaymentNote": "Der gesamte Betrag wird ohne Obergrenze oder Umschlag ausgezahlt.",
     "splitPaymentNote": "Der Betrag über der Abrechnungsgrenze kommt in den Umschlag.",
     "overnightTag": "+1 Tag",
-    "legacyDefaultsNote": "Historische Zeiten bleiben erhalten. Standardzeiten für diesen Monat können hier angepasst werden."
+    "legacyDefaultsNote": "Historische Zeiten bleiben erhalten. Standardzeiten für diesen Monat können hier angepasst werden.",
+    "autosaveReady": "Automatisches Speichern",
+    "autosaveSaving": "Wird gespeichert…",
+    "autosaveSaved": "Änderungen gespeichert",
+    "autosaveInvalid": "Nicht gespeicherte Werte prüfen",
+    "autosaveStorageError": "Speichern fehlgeschlagen — erneut versuchen",
+    "autosaveMoneyInvalid": "Betrag von 0 bis 100.000 € mit höchstens zwei Nachkommastellen eingeben.",
+    "autosaveInvalidKeptPrevious": "Ungültiger Wert nicht gespeichert; vorheriger Wert beibehalten."
   },
   "es": {
     "financeSettings": "Remuneración",
@@ -243,6 +271,13 @@ export const hourlyTranslations={
     "singlePaymentNote": "El importe completo se paga junto, sin límite ni sobre.",
     "splitPaymentNote": "La cantidad que supera el límite de nómina va al sobre.",
     "overnightTag": "+1 día",
-    "legacyDefaultsNote": "Se conservan los horarios anteriores. Para usar horarios por defecto en este mes, ajústalos aquí."
+    "legacyDefaultsNote": "Se conservan los horarios anteriores. Para usar horarios por defecto en este mes, ajústalos aquí.",
+    "autosaveReady": "Guardado automático",
+    "autosaveSaving": "Guardando…",
+    "autosaveSaved": "Cambios guardados",
+    "autosaveInvalid": "Revisa los valores sin guardar",
+    "autosaveStorageError": "No se pudo guardar; inténtalo de nuevo",
+    "autosaveMoneyInvalid": "Introduce un importe entre 0 y 100.000 €, con un máximo de dos decimales.",
+    "autosaveInvalidKeptPrevious": "El valor no válido no se guardó; se conservó el anterior."
   }
 };
