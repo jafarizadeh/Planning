@@ -1,28 +1,32 @@
-# Planning — app source archive
+# Planning Équipe
 
-Two standalone Progressive Web Apps, with **separate branches** and distinct
-user-data stores.
+Employer PWA for team scheduling, employee photographs, two shifts per day,
+monthly payslip and envelope calculations, and complete historical tracking.
 
-| Branch | Application | Public deployment |
-| --- | --- | --- |
-| [app/personal](../../tree/app/personal) | Planning — personal shift calendar | https://planning-xi-ruby.vercel.app |
-| [app/equipe](../../tree/app/equipe) | Planning Équipe — employer scheduling & payroll | https://planning-equipe-peach.vercel.app |
+Online: https://planning-equipe-peach.vercel.app
 
-**Select an application branch** to find that app's complete deployable root.
-The \`main\` branch is only this directory/index. Do not merge the app branches
-into \`main\` or into each other.
+## Run locally
 
-## Privacy
+Run: python3 -m http.server 8080
+Open http://localhost:8080 in a browser.
 
-No work records, real employee photos, browser profiles, exports or backups are
-part of this source archive. Both apps store their data locally on each device,
-not in GitHub.
+The run.py script starts an Ubuntu-specific desktop app window.
 
-This repository is **public**, so do not commit credentials or private records.
-Keep user-data backups outside GitHub.
+## Test
 
-## Deployments
+Run: node --test tests.mjs
 
-These Git branches are independent of the existing Vercel deployments.
-Pushing source here does **not** automatically update Vercel unless each
-deployment is separately configured to track its correct branch.
+## History and deletion
+
+An employee appears only during months of employment. Removing a team member
+preserves prior months in read-only mode. Optional permanent deletion,
+after a clear warning, deletes all that worker's monthly records.
+
+## Local data
+
+Employee records, photos and salaries are stored on the device, in
+IndexedDB and localStorage. GitHub and Vercel host only source files.
+Create separate JSON backups from within the app. This public source
+repository deliberately contains no real employee or user records.
+
+Default language: French; English and Chinese also supported.

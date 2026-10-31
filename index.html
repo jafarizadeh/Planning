@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="fr" dir="ltr" data-theme="light">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#f5f7fa">
+ <meta name="description" content="Planning Équipe - registre privé des horaires et rémunérations">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-status-bar-style" content="default">
+ <meta name="apple-mobile-web-app-title" content="Planning Équipe">
+ <link rel="icon" href="./favicon-v15.png" type="image/png" sizes="64x64">
+ <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-v15.png">
+ <link rel="manifest" href="./manifest.webmanifest">
+ <link rel="stylesheet" href="./styles.css">
+ <title>Planning Équipe</title>
+</head>
+<body>
+<div id="app" class="app-shell">
+ <header class="topbar">
+  <div class="brand">
+   <span class="brand-icon" aria-hidden="true"><img src="./favicon-v15.png" width="42" height="42" alt=""></span>
+   <span class="brand-copy"><strong>Planning <span>Équipe</span></strong><small data-i18n="subtitle">Gestion des équipes</small></span>
+  </div>
+  <span class="today-badge" id="today-badge"></span>
+ </header>
+ <main class="main">
+  <section id="dashboard-view" class="view" aria-label="Dashboard">
+   <div class="page-heading">
+    <div><span class="eyebrow" data-i18n="dashboardEyebrow">VUE D'ENSEMBLE</span><h1 data-i18n="dashboardTitle">Mon équipe</h1></div>
+    <button type="button" id="add-employee" class="add-button" aria-label="Ajouter un employé">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+     <span data-i18n="addEmployee">Ajouter</span>
+    </button>
+   </div>
+   <div class="month-bar" aria-label="Mois sélectionné">
+    <button class="arrow-button" type="button" id="month-prev" aria-label="Mois précédent">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="m14.5 5-7 7 7 7"/></svg>
+    </button>
+    <div class="month-center"><span data-i18n="period">PÉRIODE</span><strong id="month-title"></strong></div>
+    <button class="arrow-button" type="button" id="month-next" aria-label="Mois suivant">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="m9.5 5 7 7-7 7"/></svg>
+    </button>
+   </div>
+   <div class="list-heading">
+    <h2 data-i18n="employees">Employés</h2>
+    <span class="staff-count" id="staff-count">0</span>
+   </div>
+   <div id="employee-list" class="employee-list"></div>
+   <section class="empty-roster" id="empty-roster" hidden>
+    <div class="empty-illustration" aria-hidden="true">
+     <svg viewBox="0 0 88 88" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="16" y="29" width="56" height="45" rx="10"/><circle cx="44" cy="42" r="9"/><path d="M28 65c1-11 8-17 16-17s15 6 16 17M59 17h22M70 6v22"/>
+     </svg>
+    </div>
+    <h3 data-i18n="emptyTitle">Votre équipe commence ici</h3>
+    <p data-i18n="emptyDescription">Ajoutez un employé pour enregistrer ses créneaux et calculer ses montants.</p>
+    <button id="empty-add" class="primary-button" type="button" data-i18n="addFirst">Ajouter mon premier employé</button>
+   </section>
+   <div class="list-note" data-i18n="rowHint">Touchez un employé pour ouvrir son calendrier.</div>
+  </section>
+
+  <section id="employee-view" class="view" hidden aria-label="Employee calendar">
+   <div class="detail-toolbar">
+    <button type="button" class="back-button" id="detail-back" aria-label="Retour">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 5-7 7 7 7"/></svg>
+     <span data-i18n="back">Retour</span>
+    </button>
+    <button type="button" class="icon-button" id="detail-settings" aria-label="Réglages de l'employé">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3 14 5.1l2.8-.1.8 2.8L20 9.5l-1.2 2.5 1.2 2.5-2.4 1.7-.8 2.8-2.8-.1L12 21l-2-2.1-2.8.1-.8-2.8L4 14.5 5.2 12 4 9.5l2.4-1.7.8-2.8 2.8.1L12 3Z"/><circle cx="12" cy="12" r="3.1"/></svg>
+    </button>
+   </div>
+   <div class="detail-person">
+    <div class="detail-avatar" id="detail-avatar"></div>
+    <div class="detail-person-text"><span data-i18n="personalCalendar">PLANNING INDIVIDUEL</span><h1 id="detail-name"></h1><p id="detail-subtitle"></p></div>
+   </div>
+   <div class="history-readonly-notice" id="historical-note" role="status" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+     <rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    <span data-i18n="historyReadOnly">Historique conservé — lecture seule</span>
+   </div>
+   <button type="button" id="historical-delete" class="historical-delete-action" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+     <path d="M3.5 6h17M9 6V4.5h6V6M6.5 6l1 14h9l1-14M10 10v6M14 10v6"/>
+    </svg>
+    <span data-i18n="permanentDeleteLabel">Supprimer définitivement toutes les données de cet employé</span>
+   </button>
+   <div class="detail-stats" id="detail-stats"></div>
+   <div class="detail-month">
+    <button type="button" class="arrow-button" id="detail-month-prev" aria-label="Mois précédent">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>
+    </button>
+    <strong id="detail-month-title"></strong>
+    <button type="button" class="arrow-button" id="detail-month-next" aria-label="Mois suivant">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 5 7 7-7 7"/></svg>
+    </button>
+   </div>
+   <section class="calendar-panel">
+    <div class="weekdays" id="weekdays"></div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+    <div class="shift-key">
+     <span><span class="mark-dot" data-shift="morning"></span><span data-i18n="morning">Matin</span></span>
+     <span><span class="mark-dot" data-shift="evening"></span><span data-i18n="evening">Soir</span></span>
+    </div>
+   </section>
+   <div class="status-legend">
+    <span><i class="legend-dot is-work"></i><span data-i18n="worked">Travaillé</span></span>
+    <span><i class="legend-dot is-off"></i><span data-i18n="off">Non travaillé</span></span>
+    <span><i class="legend-dot is-unset"></i><span data-i18n="unset">Non renseigné</span></span>
+   </div>
+   <p class="calendar-tip" data-i18n="calendarHint">Sélectionnez une date pour renseigner le matin et le soir.</p>
+  </section>
+  <section id="settings-view" class="view" hidden aria-label="Settings">
+   <div class="settings-head"><span class="eyebrow">PLANNING ÉQUIPE</span><h1 data-i18n="settings">Paramètres</h1></div>
+   <section class="settings-panel">
+    <h2 data-i18n="display">Affichage</h2>
+    <div class="settings-label" data-i18n="language">Langue</div>
+    <div class="segmented" id="language-options">
+     <button type="button" data-lang="fr" class="selected">Français</button>
+     <button type="button" data-lang="en">English</button>
+     <button type="button" data-lang="zh">中文</button>
+    </div>
+    <div class="settings-label" data-i18n="appearance">Apparence</div>
+    <div class="segmented" id="theme-options">
+     <button type="button" data-theme="light" class="selected"><span aria-hidden="true">☼</span><span data-i18n="light">Clair</span></button>
+     <button type="button" data-theme="dark"><span aria-hidden="true">☾</span><span data-i18n="dark">Sombre</span></button>
+    </div>
+    <div class="settings-label" data-i18n="firstWeekday">Premier jour de la semaine</div>
+    <div class="segmented" id="weekday-options">
+     <button type="button" data-week="1" class="selected" data-i18n="monday">Lundi</button>
+     <button type="button" data-week="6" data-i18n="saturday">Samedi</button>
+     <button type="button" data-week="0" data-i18n="sunday">Dimanche</button>
+    </div>
+   </section>
+   <section class="settings-panel">
+    <h2 data-i18n="dataHeading">Données et sauvegardes</h2>
+    <button class="settings-action" id="export-backup" type="button"><span data-i18n="export">Exporter une sauvegarde</span><span>›</span></button>
+    <button class="settings-action" id="import-backup" type="button"><span data-i18n="import">Importer une sauvegarde</span><span>›</span></button>
+    <input type="file" id="backup-file" accept=".json,application/json" hidden>
+    <p class="storage-note" data-i18n="storageNote">Les données restent sur cet appareil. Conservez une sauvegarde externe pour éviter toute perte.</p>
+   </section>
+   <section class="settings-panel" id="legacy-archived-panel" hidden>
+    <h2 data-i18n="archivedTitle">Employés archivés précédemment</h2>
+    <div id="archived-list"></div>
+    <p class="storage-note" data-i18n="archiveNote">Vous pouvez réactiver les anciens dossiers sans modifier leur historique.</p>
+   </section>
+   <div class="version">Planning Équipe · v1.5</div>
+  </section>
+ </main>
+ <footer id="totals-dock" class="totals-dock" aria-label="Monthly totals">
+  <div class="totals-period"><span data-i18n="monthlyTotal">TOTAL DU MOIS</span><span id="totals-period"></span></div>
+  <div class="totals-grid">
+   <div><span data-i18n="payslip">Fiche de paie</span><strong id="totals-payslip">0,00 €</strong></div>
+   <div><span data-i18n="envelope">Enveloppe</span><strong id="totals-envelope">0,00 €</strong></div>
+   <div class="totals-emphasis"><span data-i18n="total">Total</span><strong id="totals-all">0,00 €</strong></div>
+  </div>
+ </footer>
+ <nav id="bottom-nav" class="bottom-nav" aria-label="Navigation">
+  <button id="nav-team" class="active" type="button">
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-4 2-7 6-7s6 3 6 7M16 5a3 3 0 0 1 0 6M18 14c2 .7 3 2.5 3 5"/></svg>
+   <span data-i18n="team">Équipe</span>
+  </button>
+  <button id="nav-settings" type="button">
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 17h16M9 3v8m6 2v8"/><circle cx="9" cy="11" r="2"/><circle cx="15" cy="13" r="2"/></svg>
+   <span data-i18n="settings">Paramètres</span>
+  </button>
+ </nav>
+</div>
+<div id="modal-root"></div>
+<div id="shift-root"></div>
+<div id="envelope-root"></div>
+<input type="file" id="camera-input" accept="image/*" capture="user" hidden>
+<input type="file" id="gallery-input" accept="image/*" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>
