@@ -160,6 +160,7 @@ PLANNING_TEST_URL=http://127.0.0.1:8080/ node global-modes-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node history-layout-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node settings-autosave-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node languages-browser-test.cjs
+PLANNING_TEST_URL=http://127.0.0.1:8080/ node icons-browser-test.cjs
 ```
 
 Set `PUPPETEER_MODULE` to an installed Puppeteer module when it is outside the
@@ -184,3 +185,12 @@ The app supports all eight languages above, light/dark mode and offline use afte
 the assets have been cached. Real iPhone or Samsung hardware testing is separate
 from desktop mobile emulation. Native-speaker editorial review may further refine
 the translations; automated tests check coverage and functionality, not fluency.
+
+## Interface icons (v2.4.1)
+
+The user-supplied Tabler outline sun is shared visually by Light appearance and
+the morning shift; the matching moon is used for Dark appearance and evening.
+Both retain their original 24×24 viewBox, rounded 2-unit strokes and currentColor,
+rendered at 18px in the existing controls. They are inline SVGs, not font symbols,
+and require no external icon/font service. Decorative SVGs are hidden from screen
+readers while the existing translated labels remain accessible.

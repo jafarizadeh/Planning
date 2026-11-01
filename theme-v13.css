@@ -210,7 +210,7 @@ body { background: var(--app-bg); color: var(--ink); }
   font-size: 12px; font-weight: 680; color: var(--muted);
   transition: background .16s, color .16s, box-shadow .16s;
 }
-.appearance-value svg { width: 16px; height: 16px; flex: none; }
+.appearance-value svg { display: block; width: 18px; height: 18px; flex: none; }
 .appearance-option input:checked + .appearance-value {
   color: var(--ink); background: var(--surface);
   box-shadow: 0 1px 5px rgba(25,42,65,.12);

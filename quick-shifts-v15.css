@@ -83,6 +83,7 @@ html[dir="rtl"] .quick-day-arrow svg { transform: rotate(180deg); }
   background: var(--surface-soft); color: var(--blue);
   font-size: 16px;
 }
+.quick-shift-icon svg { display: block; width: 18px; height: 18px; flex: none; }
 .quick-state-choice {
   display: grid; grid-template-columns: repeat(3,minmax(0,1fr));
   gap: 6px; width: 100%;
