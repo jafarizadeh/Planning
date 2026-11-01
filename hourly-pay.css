@@ -106,3 +106,16 @@ html[data-theme="dark"] .time-picker-overlay{background:rgba(0,0,0,.64)}
 .field-control[aria-invalid="true"]{border-color:#c78965!important}
 html[data-theme="dark"] .settings-autosave-status[data-state="saved"]{color:#8acfb2}
 html[data-theme="dark"] .settings-autosave-status[data-state="invalid"],html[data-theme="dark"] .settings-autosave-status[data-state="error"],html[data-theme="dark"] .settings-field-feedback{color:#e3b082}
+
+/* New languages use installed system fonts; no external font fetch is required. */
+html[lang="zh"]{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+html[lang="hi"]{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans Devanagari","Nirmala UI",sans-serif}
+html[lang="ur"]{font-family:"Noto Sans Arabic",-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,sans-serif}
+html[lang="ur"] .weekday{font-size:9px;font-weight:650;line-height:1.6;letter-spacing:0}
+html[lang="hi"] .weekday{font-size:9px;line-height:1.6;letter-spacing:0}
+html[lang="ur"] .quick-state-btn,html[lang="hi"] .quick-state-btn{line-height:1.55;letter-spacing:0}
+html[lang="ur"] .picker-trigger-copy strong,html[lang="ur"] .picker-choice-copy strong{line-height:1.6;letter-spacing:0}
+html[lang="hi"] .picker-trigger-copy strong,html[lang="hi"] .picker-choice-copy strong{line-height:1.5;letter-spacing:0}
+html[lang="ur"] .history-section .section-heading,html[lang="hi"] .history-section .section-heading{flex-wrap:wrap;row-gap:5px}
+html[lang="ur"] .money,html[lang="hi"] .money,html[lang="zh"] .money{unicode-bidi:isolate}
+.picker-choice-copy bdi{font:inherit}

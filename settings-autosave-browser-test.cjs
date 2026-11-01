@@ -82,14 +82,13 @@ const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   assert.equal((await archive()).settings.theme,'light');
   await input('hourly-rate-input','12.50','change');await savedRate('hourlyRate',12.5);
   assert.equal(await page.$eval('#hourly-rate-input-feedback',e=>e.hidden),true);
-  // Names save after typing; focus/caret are not recreated by a form render.
-  await tap('#morning-input');await page.type('#morning-input','Équipe du matin',{delay:8});
-  await wait(550);assert.equal((await archive()).settings.morningName,'Équipe du matin');
-  assert.equal(await page.evaluate(()=>document.activeElement.id),'morning-input');
-  assert.equal(await page.$eval('#morning-input',e=>e.selectionStart),15);
-  // Leaving the settings page flushes a final valid field before the debounce timer.
-  await input('evening-input','Service du soir');await page.click('#nav-home');
-  assert.equal((await archive()).settings.eveningName,'Service du soir');
+  // The removed label editor must not leave dead autosave event listeners.
+  assert.equal(await page.$('#morning-input'),null);
+  assert.equal(await page.$('#evening-input'),null);
+  assert.equal(await page.$('[data-text="shiftNames"]'),null);
+  // Leaving Settings still flushes the final valid amount before its debounce.
+  await input('hourly-rate-input','12.60');await page.click('#nav-home');
+  assert.equal((await archive()).settings.hourlyRate,12.6);
   assert.equal(await page.$('.alltime'),null);assert.ok(await page.$('#history-months'));
   await tap('#calendar-grid [data-date="2026-10-05"]');await wait(220);
   await page.click('#sheet-root [data-action="set-day"][data-state="work"]');

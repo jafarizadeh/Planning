@@ -1,3 +1,4 @@
+import { normalizeLanguage } from "./language-config.mjs";
 export const SHIFTS = ["morning", "evening"];
 export const DEFAULT_TIMES = Object.freeze({
  morning:Object.freeze({start:"10:00",end:"14:00"}),
@@ -42,9 +43,10 @@ function validMoney(value, fallback) {
 export function sanitizeSettings(data) {
   const x = data && typeof data === "object" && !Array.isArray(data) ? data : {};
   return {
-    language: ["fa","en","fr","de","es"].includes(x.language) ? x.language : "fr",
+    language: normalizeLanguage(x.language),
     theme: ["light","dark"].includes(x.theme) ? x.theme : DEFAULT_SETTINGS.theme,
     weekStart: [0,1,6].includes(Number(x.weekStart)) ? Number(x.weekStart) : 1,
+    // Legacy label fields are retained for lossless backup round-trips, not used by the UI.
     morningName: typeof x.morningName === "string" ? x.morningName.trim().slice(0,25) : "",
     eveningName: typeof x.eveningName === "string" ? x.eveningName.trim().slice(0,25) : "",
     shiftRate: validMoney(x.shiftRate, DEFAULT_SETTINGS.shiftRate),

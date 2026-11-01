@@ -1,19 +1,5 @@
 // Accessible iPhone-style selection sheets; native selects remain the form's source of truth.
-const LANGUAGES = [
-  {value:"de", name:"Deutsch", subtitle:"Deutsch · Deutschland", initials:"DE"},
-  {value:"en", name:"English", subtitle:"English · United Kingdom", initials:"EN"},
-  {value:"fr", name:"Français", subtitle:"Français · France", initials:"FR"},
-  {value:"fa", name:"فارسی", subtitle:"فارسی · ایران", initials:"فا"},
-  {value:"es", name:"Español", subtitle:"Español · España", initials:"ES"}
-];
-const COPY = {
-  fa:{close:"بستن",hint:"انتخاب شما خودکار ذخیره می‌شود",weekHint:"شروع هفته در تقویم",weekDetail:"تقویم از این روز شروع می‌شود"},
-  en:{close:"Close",hint:"Your selection is saved automatically",weekHint:"Calendar week begins here",weekDetail:"Use this as the first day of the week"},
-  fr:{close:"Fermer",hint:"Votre choix est enregistré automatiquement",weekHint:"Début de la semaine du calendrier",weekDetail:"Premier jour affiché dans le calendrier"},
-  de:{close:"Schließen",hint:"Ihre Auswahl wird automatisch gespeichert",weekHint:"Beginn der Kalenderwoche",weekDetail:"Erster Tag der Kalenderwoche"},
-  es:{close:"Cerrar",hint:"Tu selección se guarda automáticamente",weekHint:"Inicio de la semana del calendario",weekDetail:"Primer día de la semana"}
-};
-const LOCALES = {fa:"fa-IR",en:"en-GB",fr:"fr-FR",de:"de-DE",es:"es-ES"};
+import { LANGUAGE_OPTIONS as LANGUAGES, LANGUAGE_PICKER_COPY as COPY, LANGUAGE_LOCALES as LOCALES, languageDirection } from "./language-config.mjs";
 const escapeHTML = value => String(value).replace(/[&<>"']/g,ch=>({
   "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
 }[ch]));
@@ -77,7 +63,7 @@ export function setupPickers({getText,getLanguage}) {
       return '<button type="button" class="picker-choice'+(isSelected?' is-selected':'')+
         '" data-value="'+escapeHTML(value)+'" role="radio" aria-checked="'+isSelected+'">'+
         '<span class="picker-choice-glyph" aria-hidden="true">'+escapeHTML(symbol)+'</span>'+
-        '<span class="picker-choice-copy"><strong>'+escapeHTML(name)+'</strong><small>'+
+        '<span class="picker-choice-copy"><strong><bdi lang="'+(type==="language"?escapeHTML(value):escapeHTML(language))+'" dir="'+(type==="language"?languageDirection(value):languageDirection(language))+'">'+escapeHTML(name)+'</bdi></strong><small>'+
         escapeHTML(subtitle)+'</small></span><span class="picker-choice-check" aria-hidden="true">'+
         checkSvg+'</span></button>';
     }).join("");
@@ -98,6 +84,7 @@ export function setupPickers({getText,getLanguage}) {
     active={type,item};
     const selected=root.querySelector(".picker-choice.is-selected") || root.querySelector(".picker-choice");
     selected?.focus({preventScroll:true});
+    selected?.scrollIntoView({block:"nearest",inline:"nearest"});
   }
 
   for(const [type,item] of Object.entries(elements)) {

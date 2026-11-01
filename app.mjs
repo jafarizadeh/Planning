@@ -11,6 +11,8 @@ import { setupPickers } from "./ios-picker-v14.mjs";
 import { extraTranslations } from "./translations-extra.mjs";
 import { hourlyTranslations } from "./hourly-translations.mjs";
 import { createTimePicker } from "./time-picker.mjs";
+import { asianTranslations } from "./translations-asia.mjs";
+import { LANGUAGE_LOCALES, LANGUAGE_WEEKDAYS, languageDirection } from "./language-config.mjs";
 const translations = {
   fa: {
     appTitle:"برنامه شیفت‌ها",appSubtitle:"تقویم کار و استراحت من",today:"امروز",
@@ -145,14 +147,9 @@ const quickEntryTexts = {
 };
 for(const [lang,content] of Object.entries(quickEntryTexts)){Object.assign(translations[lang],content);}
 for(const [language,texts] of Object.entries(hourlyTranslations))Object.assign(translations[language],texts);
-const weekdays = {
-  fa:["ی","د","س","چ","پ","ج","ش"],
-  en:["Su","Mo","Tu","We","Th","Fr","Sa"],
-  fr:["D","L","M","M","J","V","S"],
-  de:["So","Mo","Di","Mi","Do","Fr","Sa"],
-  es:["Do","Lu","Ma","Mi","Ju","Vi","Sá"]
-};
-const locales = { fa:"fa-IR-u-ca-gregory", en:"en-GB", fr:"fr-FR", de:"de-DE", es:"es-ES" };
+Object.assign(translations,asianTranslations);
+const weekdays=LANGUAGE_WEEKDAYS;
+const locales=LANGUAGE_LOCALES;
 const $ = id => document.getElementById(id);
 
 function readJSON(key, fallback) {
@@ -209,7 +206,7 @@ function num(value) {
   return new Intl.NumberFormat(locales[settings.language], {maximumFractionDigits:1}).format(value);
 }
 function euro(cents) {
-  const locale = settings.language === "en" ? "en-GB" : "fr-FR";
+  const locale = ["zh","hi","ur"].includes(settings.language)?locales[settings.language]:settings.language === "en" ? "en-GB" : "fr-FR";
   return new Intl.NumberFormat(locale, {minimumFractionDigits:2, maximumFractionDigits:2})
     .format(cents / 100) + "\u00a0€";
 }
@@ -224,7 +221,8 @@ function monthLocale() {
     month:"long", year:"numeric"
   }).format(new Date(year,month,15,12));
 }
-function shiftName(shift) { return settings[shift+"Name"] || t(shift); }
+// Shift labels follow the selected UI language; old custom labels remain in backups only.
+function shiftName(shift) { return t(shift); }
 function selectedPolicy() {
   return policyForPeriod(periodKey(year,month),monthlyPolicies,settings);
 }
@@ -459,7 +457,7 @@ function restoreDefaultShift(key,shift){
 }
 function renderTranslations(preserveDrafts=false) {
   document.documentElement.lang = settings.language;
-  document.documentElement.dir = settings.language === "fa" ? "rtl" : "ltr";
+  document.documentElement.dir = languageDirection(settings.language);
   applyTheme(settings.theme);
   const todayButton = $("go-today");
   todayButton.textContent = formatToday();
@@ -473,15 +471,14 @@ function renderTranslations(preserveDrafts=false) {
   }
   $("previous-month").setAttribute("aria-label",t("prevMonth"));
   $("next-month").setAttribute("aria-label",t("nextMonth"));
+  $("home-view").setAttribute("aria-label",t("calendarTab"));
+  $("settings-view").setAttribute("aria-label",t("settingsTitle"));
+  document.querySelector(".salary-strip").setAttribute("aria-label",t("totalLabel"));
+  document.querySelector(".appearance-segment").setAttribute("aria-label",t("themeLabel"));
+  document.querySelector(".bottom-nav").setAttribute("aria-label",t("calendarTab")+" · "+t("settingsTab"));
   $("language-select").value = settings.language;
   $("weekstart-select").value = String(settings.weekStart);
   pickerControls.refresh();
-  if(!preserveDrafts){
-    $("morning-input").value=settings.morningName;
-    $("evening-input").value=settings.eveningName;
-  }
-  $("morning-input").placeholder = t("morning");
-  $("evening-input").placeholder = t("evening");
   if(!preserveDrafts)fillPaySettings();
   else {renderDefaultTimeButtons();updatePayModePreview();$("pay-settings-period").textContent=t("policyPeriod").replace("{month}",monthLocale());}
   updateArchiveStatus();
@@ -909,7 +906,6 @@ document.addEventListener("keydown",event=>{
 });
 
 // Settings save independently: an invalid amount must not block a language/theme change.
-const autoTextFields={"morning-input":"morningName","evening-input":"eveningName"};
 const autoMoneyFields={"shift-rate-input":"shiftRate","hourly-rate-input":"hourlyRate","payslip-cap-input":"payslipCap"};
 function renderSettingsAutosaveStatus(){
   const node=$("settings-autosave-status");
@@ -968,7 +964,7 @@ function updateMonthlySettingValues(patch,period=periodKey(year,month)){
 function queueSettingField(input,immediate=false){
   if(input.disabled)return;
   const id=input.id;
-  if(!autoTextFields[id]&&!autoMoneyFields[id])return;
+  if(!autoMoneyFields[id])return;
   hasUnsavedUserEdit=true;
   pendingSettingsFields.set(id,{value:input.value,period:periodKey(year,month),valid:input.validity.valid});
   if(input.validity.valid&&(!autoMoneyFields[id]||input.value.trim()!==""))settingsFieldErrors.delete(id);
@@ -984,19 +980,10 @@ function flushSettingsFields({discardInvalid=false}={}){
   for(const [id,draft] of [...pendingSettingsFields]){
     const input=$(id);
     if(!input||input.disabled){pendingSettingsFields.delete(id);settingsFieldErrors.delete(id);continue;}
-    if(autoMoneyFields[id]){
-      const amount=Number(draft.value);
-      const valid=draft.value.trim()!==""&&draft.valid&&Number.isFinite(amount)&&amount>=0&&amount<=100000&&Math.abs(amount*100-Math.round(amount*100))<0.000001;
-      if(!valid){settingsFieldErrors.add(id);continue;}
-      changed=updateMonthlySettingValues({[autoMoneyFields[id]]:amount},draft.period)||changed;
-    }else{
-      const property=autoTextFields[id];
-      const clean=sanitizeSettings({...settings,[property]:draft.value});
-      if(clean[property]!==settings[property]){
-        settings=clean;changed=true;
-        auditChange("settings","","Updated shift label: "+property);
-      }
-    }
+    const amount=Number(draft.value);
+    const valid=draft.value.trim()!==""&&draft.valid&&Number.isFinite(amount)&&amount>=0&&amount<=100000&&Math.abs(amount*100-Math.round(amount*100))<0.000001;
+    if(!valid){settingsFieldErrors.add(id);continue;}
+    changed=updateMonthlySettingValues({[autoMoneyFields[id]]:amount},draft.period)||changed;
     pendingSettingsFields.delete(id);settingsFieldErrors.delete(id);
   }
   if(changed||settingsNeedRetry)persistAutomaticSettings();
@@ -1076,7 +1063,7 @@ function saveAutomaticDefaultTimes(){
   else renderSettingsAutosaveStatus();
 }
 $("settings-form").addEventListener("submit",event=>{event.preventDefault();flushSettingsFields();});
-for(const id of [...Object.keys(autoTextFields),...Object.keys(autoMoneyFields)]){
+for(const id of Object.keys(autoMoneyFields)){
   const input=$(id);
   input.addEventListener("input",event=>{if(!event.isComposing)queueSettingField(input);});
   input.addEventListener("compositionend",()=>queueSettingField(input));

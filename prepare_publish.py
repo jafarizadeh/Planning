@@ -11,7 +11,7 @@ ASSETS=(
     'index.html','styles.css','theme-v13.css','ios-picker-v14.css',
     'quick-shifts-v15.css','hourly-pay.css','app.mjs','core.mjs',
     'archive-db.mjs','ios-picker-v14.mjs','translations-extra.mjs',
-    'hourly-translations.mjs','time-picker.mjs','service-worker.js',
+    'hourly-translations.mjs','language-config.mjs','translations-asia.mjs','time-picker.mjs','service-worker.js',
     'manifest.webmanifest','icon.svg','favicon-v2.png',
     'apple-touch-icon-v2.png','icon-192-v2.png','icon-512-v2.png','vercel.json',
 )

@@ -3,7 +3,7 @@
 A standalone, mobile-first Progressive Web App for morning/evening shifts and pay.
 Branch: `app/personal`. The employer application is separate on `app/equipe`.
 
-## Development: automatic settings and monthly history (v2.3)
+## Development: eight languages and fixed shift labels (v2.4)
 
 The home screen keeps **Historique travail et salaire**, including every recorded
 month and its payroll details. The separate **Total depuis le début** cumulative
@@ -26,10 +26,34 @@ explains this before applying the switch when any worked shifts exist. Cancellin
 restores that switch to its saved choice. Independently edited fields remain saved.
 Work statuses and personal times are not erased.
 
+### Languages and shift labels
+
+The language picker supports **French (default), English, German, Persian,
+Spanish, Simplified Chinese (简体中文), Hindi (हिन्दी) and Urdu (اردو)**.
+Language selection saves automatically, survives reloads and backup restoration,
+and remains available offline. It never converts payroll from EUR to another
+currency or changes recorded dates, work times or pay values.
+
+Urdu and Persian use right-to-left layout; Chinese and Hindi use left-to-right
+layout. All calendars remain Gregorian. Hour/minute wheels and entered clock
+values retain their left-to-right numeric order in RTL interfaces. System-font
+fallbacks cover the new scripts without fetching fonts from a third-party CDN.
+
+The **Nom des créneaux** naming card has been removed. Morning and evening now
+always use the selected language's standard labels. The underlying keys remain
+`morning` and `evening`, so no work history changes. Legacy custom-name metadata
+is preserved in imports/exports for a lossless upgrade but no longer overrides
+visible labels. No old names or other user records are committed to this repo.
+
+`language-config.mjs` is the shared registry used by the data validator, calendar
+and picker. `translations-asia.mjs` contains 141 UI strings in each new language,
+including warnings, autosave states, payroll and time-entry controls. Tests check
+complete key coverage and matching placeholders, in addition to rendered layouts.
+
 ### Automatic settings
 
 - Language, first weekday, theme and accepted mode switches save immediately.
-- Names and rates save after a 450 ms pause in typing, on blur, and before leaving
+- Rates save after a 450 ms pause in typing, on blur, and before leaving
   Settings or hiding the page. Saving does not rebuild the form, move the caret or
   scroll to the top.
 - Amounts must be nonempty, nonnegative, at most 100,000, and have no more than
@@ -123,7 +147,7 @@ Chrome window on Ubuntu, using the app's dedicated local profile.
 ## Tests
 
 ```sh
-node --test tests.mjs hourly-tests.mjs default-pay-tests.mjs global-modes-tests.mjs
+node --test tests.mjs hourly-tests.mjs default-pay-tests.mjs global-modes-tests.mjs languages-tests.mjs
 ```
 
 Optional mobile browser regression (Puppeteer is needed):
@@ -135,6 +159,7 @@ PLANNING_TEST_URL=http://127.0.0.1:8080/ node default-pay-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node global-modes-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node history-layout-browser-test.cjs
 PLANNING_TEST_URL=http://127.0.0.1:8080/ node settings-autosave-browser-test.cjs
+PLANNING_TEST_URL=http://127.0.0.1:8080/ node languages-browser-test.cjs
 ```
 
 Set `PUPPETEER_MODULE` to an installed Puppeteer module when it is outside the
@@ -155,6 +180,7 @@ The existing public site is https://planning-xi-ruby.vercel.app; local or Git
 changes do not update that site automatically unless deployment is explicitly
 configured for this branch.
 
-The app supports French (default), English, German, Persian and Spanish, light
-and dark modes, and offline use after the assets have been cached. Real iPhone
-or Samsung hardware testing is separate from desktop mobile emulation.
+The app supports all eight languages above, light/dark mode and offline use after
+the assets have been cached. Real iPhone or Samsung hardware testing is separate
+from desktop mobile emulation. Native-speaker editorial review may further refine
+the translations; automated tests check coverage and functionality, not fluency.
