@@ -194,3 +194,56 @@ Both retain their original 24×24 viewBox, rounded 2-unit strokes and currentCol
 rendered at 18px in the existing controls. They are inline SVGs, not font symbols,
 and require no external icon/font service. Decorative SVGs are hidden from screen
 readers while the existing translated labels remain accessible.
+
+
+## Safe PWA updates (v2.5)
+
+Planning continues as an installable PWA for iPhone and Android. **No reinstall**
+is needed for ordinary web updates. Every release build fingerprints only the
+public HTML/CSS/JS/image files into a new Service Worker cache identity.
+Users online with Planning open are offered a translated **Update now / Later**
+notice when a different version finishes installing. Checks also happen when
+returning to the app, reconnecting, and once an hour while it is in the foreground.
+
+A new version **does not force-refresh active work**. Clicking Update first
+checks that the shift editor, time wheel and picker are closed, all valid
+settings drafts are saved, no invalid entry remains, and a complete matching
+localStorage or IndexedDB snapshot exists. Only then can the new Service Worker
+activate and reload. "Later" defers the change until a subsequent session or
+until the user chooses it. The previous app shell is retained in cache for
+other tabs still running an older version. An offline phone continues running
+its installed version and checks again after reconnecting.
+
+This does not transmit, erase, move, merge or synchronize user records.
+Backups are still essential against device/site-data deletion.
+
+### GitHub -> existing Vercel project
+
+Repository: https://github.com/jafarizadeh/Planning/tree/app/personal
+Project: `planning`, public address: https://planning-xi-ruby.vercel.app
+
+To connect an **existing Vercel project** to GitHub, open Project Settings -> Git,
+connect `jafarizadeh/Planning`, and select `app/personal` as the **production
+branch**. Do not select `main` (it has only the repository index) or
+`app/equipe` (it is the unrelated employer application).
+
+Vercel build settings for this branch:
+
+- **Framework preset:** Other (no framework)
+- **Root directory:** repository root
+- **Build command:** `node prepare_publish.mjs`
+- **Output directory:** `publish`
+- **Install command:** none
+
+The Node build is dependency-free and emits only allowlisted public files;
+`version.json` and the Service Worker change automatically whenever public
+assets change. `python3 prepare_publish.py` delegates to this same builder for
+local releases. GitHub Actions runs the unit/build tests on each push to this
+branch. Review releases before pushing directly to the production branch.
+
+To test the real two-version update transition on Ubuntu:
+
+    node pwa-update-browser-test.cjs
+    node --test release-build-tests.mjs
+
+Both use synthetic browser records only; no personal device profile is opened.

@@ -200,7 +200,7 @@
  </div>
  <p class="privacy-note" data-text="privacy">اطلاعات فقط در مرورگر همین دستگاه ذخیره می‌شود. برای نگهداری امن، گاهی فایل پشتیبان بگیر.</p>
 </section>
-<div class="settings-fineprint">Planning · v2.4.1</div>
+<div class="settings-fineprint">Planning · v2.5</div>
 </section>
 </main>
 <nav class="bottom-nav" aria-label="Main navigation">
@@ -215,6 +215,16 @@
 <div id="sheet-root"></div>
 <div id="picker-root"></div>
 <div id="time-picker-root"></div>
+<aside id="pwa-update-banner" class="pwa-update-banner" role="status" aria-live="polite" hidden>
+ <div class="pwa-update-copy">
+  <strong id="pwa-update-title">Mise à jour disponible</strong>
+  <span id="pwa-update-description">Une nouvelle version est prête.</span>
+ </div>
+ <div class="pwa-update-actions">
+  <button id="pwa-update-later" type="button" class="pwa-update-later">Plus tard</button>
+  <button id="pwa-update-now" type="button" class="pwa-update-now">Mettre à jour</button>
+ </div>
+</aside>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script type="module" src="./app.mjs"></script>
 </body>

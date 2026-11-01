@@ -4,12 +4,13 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {SUPPORTED_LANGUAGES,LANGUAGE_OPTIONS,LANGUAGE_LOCALES,LANGUAGE_WEEKDAYS,LANGUAGE_PICKER_COPY,normalizeLanguage,languageDirection} from './language-config.mjs';
 import {asianTranslations} from './translations-asia.mjs';
+import {pwaUpdateTranslations} from './pwa-update-translations.mjs';
 import {extraTranslations} from './translations-extra.mjs';
 import {hourlyTranslations} from './hourly-translations.mjs';
 import {sanitizeSettings,makeBackup,parseBackup,calculatePayroll,updateStatus,updateTiming,payPolicy} from './core.mjs';
 const root=new URL('./',import.meta.url);
 const source=fs.readFileSync(new URL('app.mjs',root),'utf8');
-const dictionaries=vm.runInNewContext(source.slice(source.indexOf('const translations ='),source.indexOf('const weekdays='))+';JSON.stringify(translations)',{extraTranslations,hourlyTranslations,asianTranslations});
+const dictionaries=vm.runInNewContext(source.slice(source.indexOf('const translations ='),source.indexOf('const weekdays='))+';JSON.stringify(translations)',{extraTranslations,hourlyTranslations,asianTranslations,pwaUpdateTranslations});
 const all=JSON.parse(dictionaries);
 const languages=['de','en','fr','fa','es','zh','hi','ur'];
 test('one eight-language registry validates all choices; French stays the default',()=>{
@@ -80,8 +81,8 @@ test('locale does not alter shift/hourly wages or single/split allocation',()=>{
 });
 test('new language modules are included in offline cache and the safe publication list',()=>{
  const sw=fs.readFileSync(new URL('service-worker.js',root),'utf8');
- const publish=fs.readFileSync(new URL('prepare_publish.py',root),'utf8');
+ const publish=fs.readFileSync(new URL('prepare_publish.mjs',root),'utf8');
  for(const name of ['language-config.mjs','translations-asia.mjs']){
-  assert.ok(sw.includes('"./'+name+'"'));assert.ok(publish.includes("'"+name+"'"));
+  assert.ok(sw.includes('"./'+name+'"'));assert.ok(publish.includes('"'+name+'"'));
  }
 });

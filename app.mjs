@@ -6,11 +6,14 @@ import {
   sanitizeAudit, monthlyHistory, mergeHistory, payPolicy, policyForPeriod, calculatePayroll, getTiming, updateTiming, timingAnalysis,
   effectiveTiming, resetTiming, sanitizeDefaultTimes, validDefaultSchedule
 } from "./core.mjs";
-import { loadArchiveFromDb, saveArchiveToDb, requestDurableStorage } from "./archive-db.mjs";
+import { loadArchiveFromDb, saveArchiveToDb, requestDurableStorage, waitForArchiveWrites } from "./archive-db.mjs";
 import { setupPickers } from "./ios-picker-v14.mjs";
 import { extraTranslations } from "./translations-extra.mjs";
 import { hourlyTranslations } from "./hourly-translations.mjs";
 import { createTimePicker } from "./time-picker.mjs";
+import { createPwaUpdater } from "./pwa-updater.mjs";
+import { pwaUpdateTranslations } from "./pwa-update-translations.mjs";
+let pwaUpdater=null;
 import { asianTranslations } from "./translations-asia.mjs";
 import { LANGUAGE_LOCALES, LANGUAGE_WEEKDAYS, languageDirection } from "./language-config.mjs";
 const translations = {
@@ -148,6 +151,7 @@ const quickEntryTexts = {
 for(const [lang,content] of Object.entries(quickEntryTexts)){Object.assign(translations[lang],content);}
 for(const [language,texts] of Object.entries(hourlyTranslations))Object.assign(translations[language],texts);
 Object.assign(translations,asianTranslations);
+for(const [language,texts] of Object.entries(pwaUpdateTranslations))Object.assign(translations[language],texts);
 const weekdays=LANGUAGE_WEEKDAYS;
 const locales=LANGUAGE_LOCALES;
 const $ = id => document.getElementById(id);
@@ -483,6 +487,7 @@ function renderTranslations(preserveDrafts=false) {
   else {renderDefaultTimeButtons();updatePayModePreview();$("pay-settings-period").textContent=t("policyPeriod").replace("{month}",monthLocale());}
   updateArchiveStatus();
   renderSettingsAutosaveStatus();
+  pwaUpdater?.refreshCopy();
 }
 function ledMarkup(status) {
   const symbol = status === "work" ? "✓" : status === "off" ? "×" : "";
@@ -1156,6 +1161,26 @@ const timePicker=createTimePicker({getText:t});
 const pickerControls = setupPickers({getText:t,getLanguage:()=>settings.language});
 renderAll();
 void initializeArchive();
-if("serviceWorker" in navigator && location.protocol !== "file:") {
-  navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+// Before activating a new app shell, verify that every change was persisted.
+// No data reset/migration is done by the updater: it only changes public assets.
+async function safelyReloadPwa(){
+ if(document.documentElement.dataset.archiveReady!=="true"||
+    chosenDate||timePicker.isOpen()||pickerControls.isOpen())return false;
+ if(settingsFieldErrors.size)return false;
+ if(pendingSettingsFields.size)flushSettingsFields();
+ if(settingsFieldErrors.size||pendingSettingsFields.size)return false;
+ if(settingsNeedRetry)persistAutomaticSettings();
+ await waitForArchiveWrites();
+ const same=snapshot=>snapshot&&[2,3,4,5].includes(snapshot.schemaVersion)&&
+  JSON.stringify(snapshot.records)===JSON.stringify(records)&&
+  JSON.stringify(snapshot.settings)===JSON.stringify(settings)&&
+  JSON.stringify(snapshot.monthlyPolicies)===JSON.stringify(monthlyPolicies)&&
+  JSON.stringify(snapshot.audit)===JSON.stringify(audit);
+ if(same(readJSON(ARCHIVE_KEY,null)))return true;
+ return same(await loadArchiveFromDb());
 }
+pwaUpdater=createPwaUpdater({
+ getText:t,beforeReload:safelyReloadPwa,
+ onBlocked:()=>showToast(t("pwaUpdateBlocked"))
+});
+void pwaUpdater.start();

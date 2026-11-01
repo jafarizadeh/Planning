@@ -119,3 +119,25 @@ html[lang="hi"] .picker-trigger-copy strong,html[lang="hi"] .picker-choice-copy 
 html[lang="ur"] .history-section .section-heading,html[lang="hi"] .history-section .section-heading{flex-wrap:wrap;row-gap:5px}
 html[lang="ur"] .money,html[lang="hi"] .money,html[lang="zh"] .money{unicode-bidi:isolate}
 .picker-choice-copy bdi{font:inherit}
+
+/* PWA update notice: clear opt-in, no interference with data-entry sheets. */
+.pwa-update-banner{
+ position:fixed;z-index:50;inset-inline:12px;bottom:calc(83px + env(safe-area-inset-bottom,0px));
+ width:calc(100% - 24px);max-width:410px;margin-inline:auto;
+ padding:14px 14px 12px;border:1px solid var(--line);border-radius:18px;
+ background:var(--surface);color:var(--ink);
+ box-shadow:0 14px 40px #142b4740;
+}
+.pwa-update-banner[hidden]{display:none!important}
+.pwa-update-copy{display:grid;gap:5px;line-height:1.45}
+.pwa-update-copy strong{font-size:13px;font-weight:780}
+.pwa-update-copy span{font-size:11px;color:var(--muted)}
+.pwa-update-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:12px}
+.pwa-update-actions button{font:inherit;font-weight:750;font-size:11px;border-radius:11px;min-height:43px;padding:9px 15px;touch-action:manipulation}
+.pwa-update-now{border:1px solid #315c81;background:#315c81;color:#fff}
+.pwa-update-now:disabled{opacity:.7}
+.pwa-update-later{border:1px solid var(--line);background:var(--surface-soft);color:var(--ink)}
+.pwa-update-actions button:focus-visible{outline:3px solid #80b7df;outline-offset:2px}
+html[data-theme="dark"] .pwa-update-now{background:#477ca4;border-color:#477ca4}
+@media (min-width:600px){.pwa-update-banner{bottom:calc(95px + env(safe-area-inset-bottom,0px))}}
+@media (max-width:330px){.pwa-update-banner{inset-inline:8px;width:calc(100% - 16px);padding:11px}.pwa-update-actions button{padding:8px 10px}}

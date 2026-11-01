@@ -1,0 +1,27 @@
+name: Validate Planning personal
+on:
+  push:
+    branches: ["app/personal"]
+  pull_request:
+    branches: ["app/personal"]
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this app branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check JavaScript runtime
+        run: node --version
+      - name: Test salary, history, languages and update releases
+        run: node --test tests.mjs hourly-tests.mjs default-pay-tests.mjs global-modes-tests.mjs languages-tests.mjs release-build-tests.mjs
+      - name: Build public PWA release
+        run: node prepare_publish.mjs
+      - name: Check published manifest and SW version
+        run: |
+          test -f publish/index.html
+          test -f publish/version.json
+          grep -q "planning-offline-" publish/service-worker.js
+          test ! -f publish/tests.mjs
+          test ! -f publish/.env

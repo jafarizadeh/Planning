@@ -55,6 +55,12 @@ export function saveArchiveToDb(snapshot) {
   return writeQueue;
 }
 
+// Resolve only after all writes queued before this call have finished.
+// A pending save must not be lost to an update-triggered page reload.
+export function waitForArchiveWrites() {
+  return writeQueue.catch(()=>false);
+}
+
 export async function requestDurableStorage() {
   try {
     if (!navigator.storage || !navigator.storage.persist) return false;
